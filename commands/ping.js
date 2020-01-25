@@ -3,6 +3,11 @@ module.exports = {
     description: 'Ping!',
     
 	async execute(message, args) {
-		message.channel.send('Pong.' + args[0]);
+        if(args[0] != null)
+            message.channel.send('Pong. ' + args[0]);
+        else
+        {
+            message.channel.send('Pong');
+        }
 	},
 };

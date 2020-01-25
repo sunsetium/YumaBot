@@ -1,13 +1,15 @@
 module.exports = {
 	name: 'friendfinder',
-    description: 'LF>Friend!',
+    description: 'Looking for a friend inital command to write to channel.',
+    
     
 	async execute(message, args) {
-        if(args[0] == null)
-            message.channel.send('React to this message with the :slight_smile:.');
-        else
-        {
-            message.channel.send('This command does not have any arguments.')
+        if (message.content === '!friendFinder'  || message.content ==='Please react to the message with :slight_smile:') {
+            message.react('👍').then(() => message.react('👎'));
+          
+            message.channel.send('Please react to the message with :slight_smile:').then(sentMessage => {
+                sentMessage.react('👍')
+            })
         }
-	}
+    }
 };

@@ -1,8 +1,4 @@
-'use strict';
-
 const Action = require('./Action');
-const { Events } = require('../../util/Constants');
-const DMChannel = require('../../structures/DMChannel');
 
 class ChannelDeleteAction extends Action {
   constructor(client) {
@@ -12,25 +8,22 @@ class ChannelDeleteAction extends Action {
 
   handle(data) {
     const client = this.client;
-    let channel = client.channels.get(data.id);
 
+    let channel = client.channels.get(data.id);
     if (channel) {
-      client.channels.remove(channel.id);
-      channel.deleted = true;
-      if (channel.messages && !(channel instanceof DMChannel)) {
-        for (const message of channel.messages.values()) {
-          message.deleted = true;
-        }
-      }
-      /**
-       * Emitted whenever a channel is deleted.
-       * @event Client#channelDelete
-       * @param {DMChannel|GuildChannel} channel The channel that was deleted
-       */
-      client.emit(Events.CHANNEL_DELETE, channel);
+      client.dataManager.killChannel(channel);
+      this.deleted.set(channel.id, channel);
+      this.scheduleForDeletion(channel.id);
+    } else {
+      channel = this.deleted.get(data.id) || null;
     }
+    if (channel) channel.deleted = true;
 
     return { channel };
+  }
+
+  scheduleForDeletion(id) {
+    this.client.setTimeout(() => this.deleted.delete(id), this.client.options.restWsBridgeTimeout);
   }
 }
 

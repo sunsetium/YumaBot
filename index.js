@@ -73,6 +73,14 @@ client.on('messageReactionAdd', async (reaction, user) => {
 	// Now the message has been cached and is fully available
 	console.log(`${reaction.message.author}'s message "${reaction.message.content}" gained a reaction!`);
 	console.log(`${reaction.users.array()}`)
+	
+	var userIDArray = reaction.users.array();
+	for(var i=0; i < userIDArray.length; i++)
+	{
+		//getting user id stripped of the punctuation
+		userIDArray[i] = userIDArray[i].replace(/\D/g,' '); 
+	}
+
 	// We can also check if the reaction is partial or not
 	if (reaction.partial) {
 		try {

@@ -17,7 +17,7 @@ var dbExists = undefined;
 client.once('ready', () => {
 	var con = mysql.createConnection({
   		host: "localhost",
-  		user: "joseph",
+  		user: "sunny",
   		password: "admin"
 	});
 
@@ -28,18 +28,25 @@ client.once('ready', () => {
 
 		var sql = "SELECT SCHEMA_NAME FROM information_schema.schemata WHERE SCHEMA_NAME = 'yumabot'";
 		con.query(sql, function (err, result, fields){
-			if(result[0] != null){
+			if(result[0] !== undefined){
 				var {SCHEMA_NAME} = result[0];
 				setDbExists(SCHEMA_NAME);
 			}
 			else
 			{
-				console.log("bruh" + " " + getDbExists())
 				if(getDbExists() === null || getDbExists() === undefined){
 					con.query("CREATE DATABASE yumabot", function (err, result) {
 					  if (err) throw err;
 				  
 					  console.log("Database created");
+					});
+
+					var insert = "CREATE TABLE yumabot.friends (serverid varchar(255)," +
+														"userid varchar(255)," +
+														"status varchar(1))"
+					con.query(insert, function(err, result){
+						if(err) throw err
+						console.log("Table Created");
 					});
 			  }
 			}
@@ -48,6 +55,7 @@ client.once('ready', () => {
 		
 
 	});
+
 	console.log('Ready!');
 });
 

@@ -82,13 +82,12 @@ client.on('messageReactionAdd', async (reaction, user) => {
 	for(var i=0; i < userIDArray.length; i++)
 	{
 		//getting user id stripped of the punctuation
-		var god = userIDArray[i].toString().replace(/\D/g,' ').trim();
+		var userID = userIDArray[i].toString().replace(/\D/g,' ').trim();
 
-		var check = `SELECT userid FROM yumabot.friends WHERE userid = ${god}`;
+		var check = `SELECT userid FROM yumabot.friends WHERE userid = ${userID}`;
 		con.query(check, function(err, result){
-			console.log(result);
 			if(result[0] === undefined){
-				var sqlInsert = `INSERT INTO yumabot.friends (serverid, userid, status) VALUES (${reaction.message.guild.id}, ${god}, 'A')`; // A stands for Available
+				var sqlInsert = `INSERT INTO yumabot.friends (serverid, userid, status) VALUES (${reaction.message.guild.id}, ${userID}, 'A')`; // A stands for Available
 				con.query(sqlInsert, function(err, result){
 					if(err) throw err;
 					console.log("1 record inserted");

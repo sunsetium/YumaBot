@@ -51,9 +51,6 @@ client.once('ready', () => {
 			  }
 			}
 		});
-		
-		
-
 	});
 
 	console.log('Ready!');
@@ -74,12 +71,32 @@ client.on('messageReactionAdd', async (reaction, user) => {
 	console.log(`${reaction.message.author}'s message "${reaction.message.content}" gained a reaction!`);
 	console.log(`${reaction.users.array()}`)
 	
+	var con = mysql.createConnection({
+		host: "localhost",
+		user: "sunny",
+		password: "admin"
+  });
+
+  con.connect(function(err) {
 	var userIDArray = reaction.users.array();
 	for(var i=0; i < userIDArray.length; i++)
 	{
 		//getting user id stripped of the punctuation
-		userIDArray[i] = userIDArray[i].replace(/\D/g,' '); 
+		var god = userIDArray[i].toString().replace(/\D/g,' ').trim();
+
+		var check = `SELECT userid FROM yumabot.friends WHERE userid = ${god}`;
+		con.query(check, function(err, result){
+			console.log(result);
+			if(result[0] === undefined){
+				var sqlInsert = `INSERT INTO yumabot.friends (serverid, userid, status) VALUES (${reaction.message.guild.id}, ${god}, 'A')`; // A stands for Available
+				con.query(sqlInsert, function(err, result){
+					if(err) throw err;
+					console.log("1 record inserted");
+				});
+			}
+		});
 	}
+  });
 
 	// We can also check if the reaction is partial or not
 	if (reaction.partial) {

@@ -69,10 +69,19 @@ client.on('messageReactionAdd', async (reaction, user) => {
 			console.log('Something went wrong when fetching the message: ', error);
 		}
 	}
+
+	console.log("reaction.message.author: "+reaction.message.author);
+	console.log("reaction.message.content: "+reaction.message.content);
+	console.log("reaction.emoji: "+reaction.emoji);
+
+
 	// Now the message has been cached and is fully available
 	console.log(`${reaction.message.author}'s message "${reaction.message.content}" gained a reaction!`);
 	console.log(`${reaction.users.array()}`)
-	
+if(reaction.message.author == "<@670666579167412225>" && reaction.message.content == "Please react to the message with :blush:"
+	   && reaction.emoji == "😊")
+	   {
+
 	var con = mysql.createConnection({
 		host: "localhost",
 		user: "sunny",
@@ -110,6 +119,8 @@ client.on('messageReactionAdd', async (reaction, user) => {
 	}
   });
 
+}
+
 	// We can also check if the reaction is partial or not
 	if (reaction.partial) {
 		try {
@@ -123,6 +134,8 @@ client.on('messageReactionAdd', async (reaction, user) => {
 });
 
 client.on('messageReactionRemove', (reaction, user) => {
+	if(reaction.message.author == "<@670666579167412225>" && reaction.message.content == "Please react to the message with :blush:"
+	   && reaction.emoji == "😊"){
 	var userIDRemover = user.toString().replace(/\D/g,' ').trim();
 
 	var con = mysql.createConnection({
@@ -137,8 +150,8 @@ client.on('messageReactionRemove', (reaction, user) => {
 			console.log("1 Row was updated!");
 		});
 	
-
-});
+	   }
+}); 
 
 client.on('raw', packet => {
     // We don't want this to run on unrelated packets

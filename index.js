@@ -14,43 +14,44 @@ for (const file of commandFiles) {
 
 var dbExists = undefined;
 var userReactList = [];
+var friendArray = [];
 
 client.once('ready', () => {
 	var con = mysql.createConnection({
-  		host: "localhost",
-  		user: "sunny",
-  		password: "admin"
+		host: "localhost",
+		user: "joseph",
+		password: "admin"
 	});
 
-	con.connect(function(err) {
-  		if (err) throw err;
-		  
+	con.connect(function (err) {
+		if (err) throw err;
+
 		console.log("Connected to DB!");
 
 		var sql = "SELECT SCHEMA_NAME FROM information_schema.schemata WHERE SCHEMA_NAME = 'yumabot'";
-		con.query(sql, function (err, result, fields){
-			if(result[0] !== undefined){
-				var {SCHEMA_NAME} = result[0];
+		con.query(sql, function (err, result, fields) {
+			if (result[0] !== undefined) {
+				var { SCHEMA_NAME } = result[0];
 				setDbExists(SCHEMA_NAME);
 			}
-			else
-			{
-				if(getDbExists() === null || getDbExists() === undefined){
+			else {
+				if (getDbExists() === null || getDbExists() === undefined) {
 					con.query("CREATE DATABASE yumabot", function (err, result) {
-					  if (err) throw err;
-				  
-					  console.log("Database created");
+						if (err) throw err;
+
+						console.log("Database created");
 					});
 
 					var insert = "CREATE TABLE yumabot.friends (serverid varchar(255)," +
-														"userid varchar(255)," +
-														"status varchar(1),"+
-														"date TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP)"
-					con.query(insert, function(err, result){
-						if(err) throw err
+						"userid varchar(255)," +
+						"status varchar(1)," +
+						"date TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP," +
+						"primary key (serverid, userid));"
+					con.query(insert, function (err, result) {
+						if (err) throw err
 						console.log("Table Created");
 					});
-			  }
+				}
 			}
 		});
 	});
@@ -70,56 +71,87 @@ client.on('messageReactionAdd', async (reaction, user) => {
 		}
 	}
 
-	console.log("reaction.message.author: "+reaction.message.author);
-	console.log("reaction.message.content: "+reaction.message.content);
-	console.log("reaction.emoji: "+reaction.emoji);
+	//console.log("reaction.message.author: " + reaction.message.author);
+	//console.log("reaction.message.content: " + reaction.message.content);
+	//console.log("reaction.emoji: " + reaction.emoji);
 
 
 	// Now the message has been cached and is fully available
-	console.log(`${reaction.message.author}'s message "${reaction.message.content}" gained a reaction!`);
-	console.log(`${reaction.users.array()}`)
-if(reaction.message.author == "<@670666579167412225>" && reaction.message.content == "Please react to the message with :blush:"
-	   && reaction.emoji == "😊")
-	   {
+	//console.log(`${reaction.message.author}'s message "${reaction.message.content}" gained a reaction!`);
+	//console.log(`${reaction.users.array()}`)
+	if (reaction.message.author == "<@670666579167412225>" && reaction.message.content == "Please react to the message with :blush:"
+		&& reaction.emoji == "😊") {
 
-	var con = mysql.createConnection({
-		host: "localhost",
-		user: "sunny",
-		password: "admin"
-  });
+		var con = mysql.createConnection({
+			host: "localhost",
+			user: "joseph",
+			password: "admin"
+		});
 
-  con.connect(function(err) {
-	var userIDArray = reaction.users.array();
-	for(var i=0; i < userIDArray.length; i++)
-	{
-		//getting user id stripped of the punctuation
-		var userID = userIDArray[i].toString().replace(/\D/g,' ').trim();
-		userReactList[i] = userID;
+		con.connect(function (err) {
+			var userIDArray = reaction.users.array();
+			for (var i = 0; i < userIDArray.length; i++) {
+				//getting user id stripped of the punctuation
+				var userID = userIDArray[i].toString().replace(/\D/g, ' ').trim();
+				userReactList[i] = userID;
 
+				if (userID != 670666579167412225) {
+					var check = `SELECT userid, status FROM yumabot.friends WHERE userid = ${userID}`;
+					con.query(check, function (err, result) {
+						if (result[0] === undefined) {
+							var sqlInsert = `INSERT INTO yumabot.friends (serverid, userid, status) VALUES (${reaction.message.guild.id}, ${userID}, 'A')`; // A stands for Available
+							con.query(sqlInsert, function (err, result) {
+								if (err) throw err;
+								console.log("1 record inserted");
 
-		var check = `SELECT userid, status FROM yumabot.friends WHERE userid = ${userID}`;
-		con.query(check, function(err, result){
-			if(result[0] === undefined){
-				var sqlInsert = `INSERT INTO yumabot.friends (serverid, userid, status) VALUES (${reaction.message.guild.id}, ${userID}, 'A')`; // A stands for Available
-				con.query(sqlInsert, function(err, result){
-					if(err) throw err;
-					console.log("1 record inserted");
-				});
-			}else{
-				var {status} = result[0]
-				if(status == "U"){
-					var checkDb = `UPDATE yumabot.friends SET status = 'A' WHERE userid = ${userID}`;
-					con.query(checkDb, function(err, result){
-						if(err) throw err
-						console.log("1 Row was updated!");
+								var searchSQL = "select * from yumabot.friends where status = 'A' order by \"date\" desc";
+								con.query(searchSQL, function (err, result) {
+									if (err) throw err
+									if (result != null) {
+										setFriendship(result);
+										console.log("after setting friendship"+getFriendShip());
+										//var { userid } = result[0];
+										var msg = "no";
+						
+										/*client.fetchUser(userid).then((user) => {
+											user.send(msg);
+										});*/
+									}
+						
+								});
+							});
+						} else {
+							var { status } = result[0]
+							if (status == "U") {
+								console.log("SHOULD BE ONLY ONC");
+								var checkDb = `UPDATE yumabot.friends SET status = 'A', date = current_timestamp() WHERE userid = ${userID}`;
+								con.query(checkDb, function (err, result) {
+									if (err) throw err
+									console.log("1 Row was updated!");
+								});
+							}
+
+							var searchSQL = "select * from yumabot.friends where status = 'A' order by \"date\" desc";
+							con.query(searchSQL, function (err, result) {
+								if (err) throw err
+								if (result != null) {
+									setFriendship(result);
+									console.log("after setting friendship"+getFriendShip());
+									//var { userid } = result[0];
+									var msg = "no";
+					
+									/*client.fetchUser(userid).then((user) => {
+										user.send(msg);
+									});*/
+								}
+					
+							});
+						}
 					});
 				}
 			}
 		});
 	}
-  });
-
-}
 
 	// We can also check if the reaction is partial or not
 	if (reaction.partial) {
@@ -130,52 +162,52 @@ if(reaction.message.author == "<@670666579167412225>" && reaction.message.conten
 		}
 	}
 	// Now the reaction is fully available and the properties will be reflected accurately:
-	console.log(`${reaction.count} user(s) have given the same reaction to this message!`);
+	//console.log(`${reaction.count} user(s) have given the same reaction to this message!`);
 });
 
 client.on('messageReactionRemove', (reaction, user) => {
-	if(reaction.message.author == "<@670666579167412225>" && reaction.message.content == "Please react to the message with :blush:"
-	   && reaction.emoji == "😊"){
-	var userIDRemover = user.toString().replace(/\D/g,' ').trim();
+	if (reaction.message.author == "<@670666579167412225>" && reaction.message.content == "Please react to the message with :blush:"
+		&& reaction.emoji == "😊") {
+		var userIDRemover = user.toString().replace(/\D/g, ' ').trim();
 
-	var con = mysql.createConnection({
-		host: "localhost",
-		user: "sunny",
-		password: "admin"
-	  });
-	  
-	  var check = `UPDATE yumabot.friends SET status = 'U' WHERE userid = ${userIDRemover}`;
-		con.query(check, function(err, result){
-			if(err) throw err
+		var con = mysql.createConnection({
+			host: "localhost",
+			user: "joseph",
+			password: "admin"
+		});
+
+		var check = `UPDATE yumabot.friends SET status = 'U', date = current_timestamp() WHERE userid = ${userIDRemover}`;
+		con.query(check, function (err, result) {
+			if (err) throw err
 			console.log("1 Row was updated!");
 		});
-	
-	   }
-}); 
+
+	}
+});
 
 client.on('raw', packet => {
-    // We don't want this to run on unrelated packets
-    if (!['MESSAGE_REACTION_ADD', 'MESSAGE_REACTION_REMOVE'].includes(packet.t)) return;
-    // Grab the channel to check the message from
-    const channel = client.channels.get(packet.d.channel_id);
-    // There's no need to emit if the message is cached, because the event will fire anyway for that
-    if (channel.messages.has(packet.d.message_id)) return;
-    // Since we have confirmed the message is not cached, let's fetch it
-    channel.fetchMessage(packet.d.message_id).then(message => {
-        // Emojis can have identifiers of name:id format, so we have to account for that case as well
-        const emoji = packet.d.emoji.id ? `${packet.d.emoji.name}:${packet.d.emoji.id}` : packet.d.emoji.name;
-        // This gives us the reaction we need to emit the event properly, in top of the message object
-        const reaction = message.reactions.get(emoji);
-        // Adds the currently reacting user to the reaction's users collection.
-        if (reaction) reaction.users.set(packet.d.user_id, client.users.get(packet.d.user_id));
-        // Check which type of event it is before emitting
-        if (packet.t === 'MESSAGE_REACTION_ADD') {
-            client.emit('messageReactionAdd', reaction, client.users.get(packet.d.user_id));
-        }
-        if (packet.t === 'MESSAGE_REACTION_REMOVE') {
-            client.emit('messageReactionRemove', reaction, client.users.get(packet.d.user_id));
-        }
-    });
+	// We don't want this to run on unrelated packets
+	if (!['MESSAGE_REACTION_ADD', 'MESSAGE_REACTION_REMOVE'].includes(packet.t)) return;
+	// Grab the channel to check the message from
+	const channel = client.channels.get(packet.d.channel_id);
+	// There's no need to emit if the message is cached, because the event will fire anyway for that
+	if (channel.messages.has(packet.d.message_id)) return;
+	// Since we have confirmed the message is not cached, let's fetch it
+	channel.fetchMessage(packet.d.message_id).then(message => {
+		// Emojis can have identifiers of name:id format, so we have to account for that case as well
+		const emoji = packet.d.emoji.id ? `${packet.d.emoji.name}:${packet.d.emoji.id}` : packet.d.emoji.name;
+		// This gives us the reaction we need to emit the event properly, in top of the message object
+		const reaction = message.reactions.get(emoji);
+		// Adds the currently reacting user to the reaction's users collection.
+		if (reaction) reaction.users.set(packet.d.user_id, client.users.get(packet.d.user_id));
+		// Check which type of event it is before emitting
+		if (packet.t === 'MESSAGE_REACTION_ADD') {
+			client.emit('messageReactionAdd', reaction, client.users.get(packet.d.user_id));
+		}
+		if (packet.t === 'MESSAGE_REACTION_REMOVE') {
+			client.emit('messageReactionRemove', reaction, client.users.get(packet.d.user_id));
+		}
+	});
 });
 
 client.on('message', message => {
@@ -183,7 +215,7 @@ client.on('message', message => {
 
 	const args = message.content.slice(prefix.length).split(/ +/);
 	const command = args.shift().toLowerCase();
-	
+
 	if (!client.commands.has(command)) return;
 
 	try {
@@ -193,18 +225,21 @@ client.on('message', message => {
 		message.reply('there was an error trying to execute that command!');
 	}
 });
-/*
-client.fetchUser('123456789').then((user) => {
-    user.send("My Message");
-});*/
 
-
-function setDbExists(value){
+function setDbExists(value) {
 	dbExists = value;
 }
 
-function getDbExists(){
+function getDbExists() {
 	return dbExists;
+}
+
+function setFriendship(value){
+	friendArray = value;
+}
+
+function getFriendShip(){
+	return friendArray;
 }
 
 client.login(token);

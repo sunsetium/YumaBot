@@ -12,7 +12,7 @@ for (const file of commandFiles) {
 	client.commands.set(command.name, command);
 }
 
-var dbExists = "1";
+var dbExists = undefined;
 
 client.once('ready', () => {
 	var con = mysql.createConnection({
@@ -21,7 +21,6 @@ client.once('ready', () => {
   		password: "admin"
 	});
 
-	dbExists = "1";
 	con.connect(function(err) {
   		if (err) throw err;
 		  
@@ -33,30 +32,28 @@ client.once('ready', () => {
 				var {SCHEMA_NAME} = result[0];
 				setDbExists(SCHEMA_NAME);
 			}
+			else
+			{
+				console.log("bruh" + " " + getDbExists())
+				if(getDbExists() === null || getDbExists() === undefined){
+					con.query("CREATE DATABASE yumabot", function (err, result) {
+					  if (err) throw err;
+				  
+					  console.log("Database created");
+					});
+			  }
+			}
 		});
 		
-		console.log("brug" + " " + getDbExists())
-		if(getDbExists() === null || getDbExists() === undefined){
-  			con.query("CREATE DATABASE yumabot", function (err, result) {
-				if (err) throw err;
-			
-				console.log("Database created");
-			  });
-		}
+		
+
 	});
 	console.log('Ready!');
 });
 
 
 // Set and get
-function setDbExists(value){
-	dbExists = value;
-}
 
-function getDbExists(){
-	console.log('getters '+dbExists);
-	return dbExists;
-}
 
 client.on('message', message => {
 	if (!message.content.startsWith(prefix) || message.author.bot) return;
@@ -73,5 +70,16 @@ client.on('message', message => {
 		message.reply('there was an error trying to execute that command!');
 	}
 });
+function setDbExists(value){
+	console.log('before set '+dbExists);
+	dbExists = value;
+	console.log('after setters '+dbExists);
 
+
+}
+
+function getDbExists(){
+	console.log('getters '+dbExists);
+	return dbExists;
+}
 client.login(token);

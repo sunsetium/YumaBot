@@ -7,12 +7,12 @@ const client = new Discord.Client();
 client.commands = new Discord.Collection();
 const commandFiles = fs.readdirSync('./commands').filter(file => file.endsWith('.js'));
 
-var dbExists = 10;
-
 for (const file of commandFiles) {
 	const command = require(`./commands/${file}`);
 	client.commands.set(command.name, command);
 }
+
+var dbExists = "1";
 
 client.once('ready', () => {
 	var con = mysql.createConnection({
@@ -21,7 +21,7 @@ client.once('ready', () => {
   		password: "admin"
 	});
 
-	var dbExists = null;
+	dbExists = "1";
 	con.connect(function(err) {
   		if (err) throw err;
 		  
@@ -35,7 +35,8 @@ client.once('ready', () => {
 			}
 		});
 		
-		if(setDbExists() === null){
+		console.log("brug" + " " + getDbExists())
+		if(getDbExists() === null || getDbExists() === undefined){
   			con.query("CREATE DATABASE yumabot", function (err, result) {
 				if (err) throw err;
 			
@@ -46,9 +47,14 @@ client.once('ready', () => {
 	console.log('Ready!');
 });
 
-// Takes the value if the db exists or not
+
+// Set and get
 function setDbExists(value){
 	dbExists = value;
+}
+
+function getDbExists(){
+	console.log('getters '+dbExists);
 	return dbExists;
 }
 

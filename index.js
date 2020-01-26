@@ -137,9 +137,17 @@ client.on('messageReactionAdd', async (reaction, user) => {
 								if (result != null) {
 									setFriendship(result);
 									console.log("after setting friendship"+getFriendShip());
-									//var { userid } = result[0];
-									var msg = "no";
-					
+									var { userid } = result[0];
+									var userid2 = result[1].userid;
+									var msg = "userid2";
+
+									var user2 = client.fetchUser(userid2);
+									console.log(user2);
+
+									/*client.fetchUser(userid).then((user) => {
+										user.send(user2.user.username + "#" + user2.user.discriminator);
+									});*/
+
 									/*client.fetchUser(userid).then((user) => {
 										user.send(msg);
 									});*/

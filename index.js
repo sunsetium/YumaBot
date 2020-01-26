@@ -44,7 +44,8 @@ client.once('ready', () => {
 
 					var insert = "CREATE TABLE yumabot.friends (serverid varchar(255)," +
 														"userid varchar(255)," +
-														"status varchar(1))"
+														"status varchar(1),"+
+														"date TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP)"
 					con.query(insert, function(err, result){
 						if(err) throw err
 						console.log("Table Created");
@@ -179,6 +180,11 @@ client.on('message', message => {
 		message.reply('there was an error trying to execute that command!');
 	}
 });
+/*
+client.fetchUser('123456789').then((user) => {
+    user.send("My Message");
+});*/
+
 
 function setDbExists(value){
 	dbExists = value;

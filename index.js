@@ -1,1 +1,1 @@
-why you no word
+print("cum")

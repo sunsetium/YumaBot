@@ -23,10 +23,9 @@ fs.readdir("./commands/", (err, files) => {
 
 // Bot is ready
 bot.on('ready', () => {
-  console.log(`Bot has started, with ${bot.users.size} users, in ${bot.channels.size} channels of ${bot.guilds.size} guilds.`); 
+  console.log(`Bot has started in ${bot.guild.id}.`); 
 
   bot.user.setActivity("Being a bot lol");
-  var sqlite3 = require('sqlite3').verbose();
 });
 
 // On message event

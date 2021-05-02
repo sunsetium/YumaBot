@@ -9,6 +9,8 @@ module.exports.run = async (bot, msg, args) => {
               + "userID INTEGER PRIMARY KEY,"
               + "status INTEGER,"
               + "blockID INTEGER");
+        
+        //var stmt = db.
       });
       
       db.close();

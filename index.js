@@ -1,6 +1,7 @@
 const Discord = require("discord.js");
 const config = require("./config.json");
 const fs = require("fs");
+const firstMessage = require("./commands/first-message");
 const bot = new Discord.Client();
 bot.commands = new Discord.Collection();
 
@@ -23,10 +24,13 @@ fs.readdir("./commands/", (err, files) => {
 
 // Bot is ready
 bot.on('ready', () => {
-  console.log(`Bot has started in ${bot.guild.id}.`); 
+  //console.log(`Bot has started in ${bot.guild.id}.`); 
 
-  bot.user.setActivity("Being a bot lol");
+  bot.user.setActivity("pog-gress");
+  // todo next step would be to make a new channel where the bot could start its processes.
+  firstMessage(bot, '838496071029620756', 'Hello World lulw', ['😄'])
 });
+
 
 // On message event
 bot.on('message', async msg => {

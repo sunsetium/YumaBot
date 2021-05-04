@@ -1,7 +1,6 @@
 const Discord = require("discord.js");
 const config = require("./config.json");
 const fs = require("fs");
-const firstMessage = require("./commands/first-message");
 const bot = new Discord.Client();
 bot.commands = new Discord.Collection();
 
@@ -28,7 +27,6 @@ bot.on('ready', () => {
 
   bot.user.setActivity("pog-gress");
   // todo next step would be to make a new channel where the bot could start its processes.
-  firstMessage(bot, '838496071029620756', 'Hello World lulw', ['😄'])
 });
 
 

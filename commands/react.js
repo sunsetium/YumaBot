@@ -51,7 +51,7 @@ module.exports.run = async (bot, msg, args) => {
 
 
 //Working example 2
-/* 
+/*
 module.exports.run = async (bot, msg, args) => {
     msg.react('👍').then(() => msg.react('👎'));
     const filter = (reaction, user) => {

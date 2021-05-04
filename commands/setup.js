@@ -21,13 +21,38 @@ const addReactions = (message, reactions) => {
 
   module.exports.run = async (bot, msg, args) => {
 
+
     // Create a new text channel
     const createdCh = msg.guild.channels.create('friend-finding')
-      .then(console.log()).then((ch) => {msg.reply(`Friend finding channel has now been created ${ch}`);
-    }).then(function(result) {
+      .then((ch) => {msg.reply(`Friend finding channel has now been created ${ch}`);
+      return ch
+    })
+    .then((channelID) => {
+      const specificChannel = msg.guild.channels.cache.find(channel => channel.id === channelID.id);
+      //specificChannel.send("React for friendship ;-;");
+      return specificChannel
+    })
+    .then((specificChannel) =>{
 
-      const specificChannel = msg.guild.channels.cache.find(channel => channel.name === 'friend-finding');
-      specificChannel.send("it works!");
+      text = "Friendship ;-; plz";
+      reactions = ['😄'];
+
+//review bottom portions to always listen to reactions.
+      specificChannel.messages.fetch().then((messages) => {
+        if (messages.size === 0) {
+          // Send a new message
+          specificChannel.send(text).then((message) => {
+            addReactions(message, reactions)
+          })
+        } else {
+          // Edit the existing message
+          for (const message of messages) {
+            message[1].edit(text)
+            addReactions(message[1], reactions)
+          }
+        }
+      })
+      
     })
     .catch(console.error)
 

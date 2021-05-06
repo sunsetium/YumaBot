@@ -30,8 +30,15 @@ bot.on('guildCreate', async guild =>{
     var dirName = `./servers/${guild.id}`;
     if (!fs.existsSync(dirName)){
         fs.mkdirSync(dirName);
+        let configJson = {
+            prefix: '!',
+            ffMsgID: null,
+            ffChannelID: null,
+            ffRoleID: null
+        };
+        let data = JSON.stringify(configJson);
+        fs.writeFileSync(`./servers/${guild.id}/server_config.json`,data);
     }
-
 });
 
 //When bot leaves guild.

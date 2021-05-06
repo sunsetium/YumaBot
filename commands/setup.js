@@ -4,6 +4,7 @@ const fs = require("fs");
 const { userInfo } = require("os");
 var sqlite3 = require('sqlite3').verbose();
 
+//TODO: Refactor setup.js so that it uses the config file.
 //TODO: check for existing channel/role to avoid duplicates.
 //TODO: Make it always listen even after going offline.
 

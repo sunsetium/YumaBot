@@ -3,6 +3,9 @@ const config = require("./config.json");
 const fs = require("fs");
 const bot = new Discord.Client();
 bot.commands = new Discord.Collection();
+var sqlite3 = require('sqlite3').verbose();
+var db = new sqlite3.Database('ff.db');
+
 
 // Loads all commands
 fs.readdir("./commands/", (err, files) => {
@@ -21,10 +24,23 @@ fs.readdir("./commands/", (err, files) => {
     });
 });
 
-// When bot joind guild
+// When bot joined guild
 bot.on('guildCreate', async guild =>{
-    console.log(guild.id);
+    console.log("The bot has now joined guild: "+ guild.id + ": " + guild.name);
+    var dirName = `./servers/${guild.id}`;
+    if (!fs.existsSync(dirName)){
+        fs.mkdirSync(dirName);
+    }
+
 });
+
+//When bot leaves guild.
+bot.on('guildDelete', async guild =>{
+    console.log("The bot has now left guild: "+ guild.id + ": " + guild.name);
+    fs.rmSync(`./servers/${guild.id}`, { recursive: true });
+    console.log('deleted corresponding directory');
+});
+
 
 // Bot is ready
 bot.on('ready', () => {

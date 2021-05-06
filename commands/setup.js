@@ -4,6 +4,8 @@ const fs = require("fs");
 const { userInfo } = require("os");
 var sqlite3 = require('sqlite3').verbose();
 
+//TODO: check for existing channel/role to avoid duplicates.
+//TODO: Make it always listen even after going offline.
 
 const roleName = 'Looking for Friend';
 const botStartMsg = "Friendship ;-; plz";
@@ -12,13 +14,6 @@ var roleID;
 var specificMsgID;
 var specificChannelID;
 emoteName = '😄';
-
- /*
-  Add this commented section to the command that would create the new channel.
-  
-  // todo next step would be to make a new channel where the bot could start its processes.
-  firstMessage(bot, '838496071029620756', 'Hello World lulw', ['😄'])
-*/
 
 const addReactions = (message, reactions) => {
     message.react(reactions[0])
@@ -29,14 +24,20 @@ const addReactions = (message, reactions) => {
   }
 
 
-  module.exports.run = async (bot, msg, args) => {
+  function existingCheck()
+  {
+    //check if setup was already used and is still valid/not deleted
+  }
 
+
+  module.exports.run = async (bot, msg, args) => {
     // Create a new text channel
     const createdCh = msg.guild.channels.create('friend-finding')
       .then((ch) => {msg.reply(`Friend finding channel has now been created ${ch}`);
       return ch
     })
     .then((channelID) => {
+
       const specificChannel = msg.guild.channels.cache.find(channel => channel.id === channelID.id);
       //specificChannel.send("React for friendship ;-;");
       specificChannelID = specificChannel.id;
@@ -127,27 +128,3 @@ const addReactions = (message, reactions) => {
 module.exports.help = {
     name: "setup"
 }
-
-
-
-  /*
-module.exports = async (bot, id, text, reactions = []) => {
-    const channel = await bot.channels.fetch(id)
-
-    channel.messages.fetch().then((messages) => {
-      if (messages.size === 0) {
-        // Send a new message
-        channel.send(text).then((message) => {
-          addReactions(message, reactions)
-        })
-      } else {
-        // Edit the existing message
-        for (const message of messages) {
-          message[1].edit(text)
-          addReactions(message[1], reactions)
-        }
-      }
-    })
-  }
-
-*/

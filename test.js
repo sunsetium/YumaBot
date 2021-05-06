@@ -2,23 +2,25 @@ var sqlite3 = require('sqlite3').verbose();
 var db = new sqlite3.Database('ff.db');
 
 // Matches even number of people
-db.all("select * from users where status != 0 order by status desc", [], (err, rows) => {
+db.all("select * from users where status != 0 order by status desc, random()", [], (err, rows) => {
     if (err) throw err;
 
-    for (let i = 0; i < rows.length; i++){
+    for (let i = 0; i < rows.length; i += 2){
         if(rows[i+1]){
             Promise.all([checkHisotry(rows[i].userid, rows[i+1].userid)])
             .then((talkedTo) => {
                 if(!talkedTo[0]){
+                    updateUsers(rows[i].userid, rows[i+1].userid, 0)
                     console.log(`${rows[i].userid} is matched with ${rows[i+1].userid}`)
                 }else{
+                    updateUsers(rows[i].userid, rows[i+1].userid, 2)
                     console.log(`${rows[i].userid} already mached with ${rows[i+1].userid} send to priority queue`)
                 }
             })
         }else{
-            console.log(`${rows[i].userid} is ignored`)
+            updateUsers(rows[i].userid, rows[i+1].userid, 2)
+            console.log(`${rows[i].userid} is ignored, send to priority queue`)
         }
-        i = i+1;
     }
 });
 
@@ -37,4 +39,13 @@ function checkHisotry(user1, user2){
             }
         })
     })
+}
+
+function updateUsers(user1, user2, status){
+    db.run(`UPDATE users 
+                SET status = CASE userID 
+                    WHEN ${user1} THEN ${status} 
+                    WHEN ${user2} THEN ${status} 
+                END 
+            WHERE userID IN (${user1},${user2})`)
 }

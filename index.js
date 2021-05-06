@@ -21,10 +21,13 @@ fs.readdir("./commands/", (err, files) => {
     });
 });
 
+// When bot joind guild
+bot.on('guildCreate', async guild =>{
+    console.log(guild.id);
+});
+
 // Bot is ready
 bot.on('ready', () => {
-  //console.log(`Bot has started in ${bot.guild.id}.`); 
-
   bot.user.setActivity("pog-gress");
   // todo next step would be to make a new channel where the bot could start its processes.
 });

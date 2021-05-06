@@ -5,10 +5,15 @@ var sqlite3 = require('sqlite3').verbose();
 module.exports.run = async (bot, msg, args) => {
     var db = new sqlite3.Database('ff.db');
 
-    db.run("CREATE TABLE IF NOT EXISTS users("
-            + "userID INTEGER PRIMARY KEY,"
-            + "status INTEGER,"
-            + "blockID INTEGER);");
+    db.run(`CREATE TABLE IF NOT EXISTS users(
+                userID INTEGER PRIMARY KEY,
+                status INTEGER);`);
+    /*
+    CREATE TABLE IF NOT EXISTS histories(
+                historyID INTEGER PRIMARY KEY AUTOINCREMENT,
+                userID INTEGER,
+                spokenToID INTEGER);
+    */
             
    /* Before adding someone to db, check if they are in it or not, add if not
       Every 1hour query all users with status (priority) and check blocked/history

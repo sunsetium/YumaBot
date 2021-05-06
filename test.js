@@ -2,34 +2,40 @@ var sqlite3 = require('sqlite3').verbose();
 var db = new sqlite3.Database('ff.db');
 
 // Matches even number of people
-db.all("select * from users where status != 0 order by status desc, random()", [], (err, rows) => {
+db.all("SELECT * FROM users WHERE status != 0 ORDER BY status DESC, random()", [], (err, rows) => {
     if (err) throw err;
 
+    for(let q = 0; q < rows.length; q++){
+        console.log(rows[q])
+    }
     for (let i = 0; i < rows.length; i += 2){
         if(rows[i+1]){
-            Promise.all([checkHisotry(rows[i].userid, rows[i+1].userid)])
+            Promise.all([checkHistory(rows[i].userID, rows[i+1].userID)])
             .then((talkedTo) => {
                 if(!talkedTo[0]){
-                    updateUsers(rows[i].userid, rows[i+1].userid, 0)
-                    console.log(`${rows[i].userid} is matched with ${rows[i+1].userid}`)
+                    updateUsers(rows[i].userID, rows[i+1].userID, 0)
+                    addToHistory(rows[i].userID, rows[i+1].userID)
+                    console.log(`${rows[i].userID} is matched with ${rows[i+1].userID}`)
                 }else{
-                    updateUsers(rows[i].userid, rows[i+1].userid, 2)
-                    console.log(`${rows[i].userid} already mached with ${rows[i+1].userid} send to priority queue`)
+                    updateUsers(rows[i].userID, rows[i+1].userID, 2)
+                    console.log(`${rows[i].userID} already mached with ${rows[i+1].userID} send to priority queue`)
                 }
             })
         }else{
-            updateUsers(rows[i].userid, rows[i+1].userid, 2)
-            console.log(`${rows[i].userid} is ignored, send to priority queue`)
+            db.run(`UPDATE users 
+                    SET status = 2
+                    WHERE userID = ${rows[i].userID}`)
+            console.log(`${rows[i].userID} is ignored, send to priority queue`)
         }
     }
 });
 
-function checkHisotry(user1, user2){
+function checkHistory(user1, user2){
     return new Promise((resolve, reject) => {
-        db.all(`Select users.userid, histories.spokenToID from users` +
-        ` inner join histories on users.userid = histories.userID` +
-        ` where (users.userid = ${user1} or histories.spokenToID = ${user1})`+
-        ` and (users.userid = ${user2} or histories.spokenToID = ${user2})`, [], (err, rows) =>{
+        db.all(`SELECT users.userID, histories.spokenToID FROM users
+                INNER JOIN histories ON users.userID = histories.userID
+                WHERE (users.userID = ${user1} OR histories.spokenToID = ${user1})
+                AND (users.userID = ${user2} OR histories.spokenToID = ${user2});`, [], (err, rows) =>{
             if (err) throw err;
 
             if(rows.length == 0){
@@ -47,5 +53,10 @@ function updateUsers(user1, user2, status){
                     WHEN ${user1} THEN ${status} 
                     WHEN ${user2} THEN ${status} 
                 END 
-            WHERE userID IN (${user1},${user2})`)
+            WHERE userID IN (${user1},${user2});`)
+}
+
+function addToHistory(user1, user2){
+    db.run(`INSERT INTO histories (userID, spokentoID)
+            VALUES (${user1}, ${user2});`);
 }

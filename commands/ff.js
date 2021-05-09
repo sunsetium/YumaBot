@@ -1,64 +1,117 @@
 const Discord = require("discord.js");
 const fs = require("fs");
+const { resolve } = require("path");
 var sqlite3 = require('sqlite3').verbose();
+let stuff = true;
 
 module.exports.run = async (bot, msg, args) => {
-    var db = new sqlite3.Database('ff.db');
+    if(!msg.member.hasPermission("MANAGE_SERVER")) return;
+    var db = new sqlite3.Database(`ff.db`);
+    let hasFF = JSON.parse(fs.readFileSync(`./servers/${msg.guild.id}/server_config.json`, "utf8"));
 
-    db.run(`CREATE TABLE IF NOT EXISTS users(
-                userID INTEGER PRIMARY KEY,
-                status INTEGER);`);
-    /*
-    CREATE TABLE IF NOT EXISTS histories(
-                historyID INTEGER PRIMARY KEY AUTOINCREMENT,
-                userID INTEGER,
-                spokenToID INTEGER);
-    */
-            
-   /* Before adding someone to db, check if they are in it or not, add if not
-      Every 1hour query all users with status (priority) and check blocked/history
-      then match 2 users together, add users to history db
-            Select users.userid, histories.spokenToID from users 
-            inner join histories on users.userid = histories.userID 
-            where (users.userid = 4 or histories.spokenToID = 4) and (users.userid = 10 or histories.spokenToID = 10);
+    if (!hasFF.ffChannelID) {
+        db.run(`CREATE TABLE IF NOT EXISTS users(
+                    userID INTEGER PRIMARY KEY,
+                    status INTEGER);`, [], (err) => {
+            if (err) console.log(err)
+        });
 
-    CREATE blocked table, history Table, query by status and random
-    var userID = 4;
-    var status = 0;
-    
-    db.run(`INSERT INTO users VALUES(${userID}, ${status})`, function(err){
-        if (err){
-            return console.log(err.message);
-        }
-    });*/
-    var currentUser;
-    var buddyUser;
-    db.all("select * from users where status != 0 order by status desc, random()",[], (err, rows) => {
-        if (err){
-            throw err
-        }
+        db.run(`CREATE TABLE IF NOT EXISTS histories(
+                    historyID INTEGER PRIMARY KEY AUTOINCREMENT,
+                    userID INTEGER,
+                    spokenToID INTEGER);`, [], (err) => {
+            if (err) console.log(err)
+        });
+    }
 
-        rows.forEach((row) => {
-            currentUser = row.userid;
-            buddyUser = row
+    /*if (REACTED WITH EMOJI) {
+        db.all(`SELECT userID 
+                FROM   users 
+                WHERE  userID=${userID}`, [], (err, rows) => {
+            if (rows.length == 0) {
+                db.run(`INSERT INTO users VALUES(${userID}, 1)`)
+            } else {
+                db.run(`UPDATE users 
+                        SET    status = 1 
+                        WHERE  userID=${userID}`)
+            }
         })
-    });
-    
-    db.all("Select users.userid, histories.spokenToID from users inner join histories on users.userid = histories.userID",[], (err, rows) => {
-        if (err){
-            throw err
-        }
+    }*/
 
-        rows.forEach((row) => {
-            var user = row.userid;
-            var spokenTo = row.spokenToID;
-            
+    /*let duration = GET FROM ARGUMENTS
+    setTimeout(() => {
+        db.all(`SELECT * 
+                FROM   users 
+                WHERE  status != 0 
+                ORDER  BY status DESC,
+                random()`, [], (err, rows) => {
+            if (err) throw err;
 
-            
+            for (let i = 0; i < rows.length; i += 2) {
+                if (rows[i + 1]) {
+                    Promise.all([checkHistory(rows[i].userID, rows[i + 1].userID, db)])
+                        .then((talkedTo) => {
+                            if (!talkedTo[0]) {
+                                updateUsers(rows[i].userID, rows[i + 1].userID, 0, db)
+                                addToHistory(rows[i].userID, rows[i + 1].userID, db)
+                                console.log(`${rows[i].userID} is matched with ${rows[i + 1].userID}`)
+                            } else {
+                                updateUsers(rows[i].userID, rows[i + 1].userID, 2, db)
+                                console.log(`${rows[i].userID} already mached with ${rows[i + 1].userID} send to priority queue`)
+                            }
+                        })
+                } else {
+                    db.run(`UPDATE users 
+                            SET    status = 2
+                            WHERE  userID = ${rows[i].userID}`)
+                    console.log(`${rows[i].userID} is ignored, send to priority queue`)
+                }
+            }
+        });
+        db.close();
+    }, duration);*/
+}
+
+// Checks if a user as already spoken to another user
+function checkHistory(user1, user2, db) {
+    return new Promise((resolve, reject) => {
+        db.all(`SELECT     users.userid,
+                           histories.spokentoid
+                FROM       users
+                INNER JOIN histories
+                ON         users.userid = histories.userid
+                WHERE      (
+                                       users.userid = ${user1}
+                           OR          histories.spokentoid = ${user1})
+                AND        (
+                                       users.userid = ${user2}
+                            OR         histories.spokentoid = ${user2});`, [], (err, rows) => {
+            if (err) throw err;
+
+            if (rows.length == 0) {
+                resolve(false)
+            } else {
+                resolve(true)
+            }
         })
-    });
+    })
+}
 
-    db.close();
+// Updates the users statuts when they are matched
+function updateUsers(user1, user2, status, db) {
+    db.run(`UPDATE users 
+            SET    status = 
+                   CASE userID 
+                          WHEN ${user1} THEN ${status} 
+                          WHEN ${user2} THEN ${status} 
+                    END 
+            WHERE   userID IN (${user1},${user2});`)
+}
+
+// Adds the users to the histories table
+function addToHistory(user1, user2, db) {
+    db.run(`INSERT INTO histories (userID, spokentoID)
+            VALUES (${user1}, ${user2});`);
 }
 
 module.exports.help = {

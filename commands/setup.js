@@ -15,6 +15,7 @@ var roleID;
 var specificMsgID;
 var specificChannelID;
 emoteName = '😄';
+botID = '670666579167412225';
 
 const addReactions = (message, reactions) => {
     message.react(reactions[0])
@@ -24,51 +25,47 @@ const addReactions = (message, reactions) => {
     }
   }
 
+function existingCheck()
+{
+  //check if setup was already used and is still valid/not deleted
+}
 
-  function existingCheck()
-  {
-    //check if setup was already used and is still valid/not deleted
-  }
+function jsonFileUpdate(filepath, attribute, newVal, msg)
+{
+  let configFile = JSON.parse(fs.readFileSync(filepath, "utf8"))
+  configFile[attribute] = newVal
+  console.log(configFile);
+  fs.writeFileSync(`./servers/${msg.guild.id}/server_config.json`, JSON.stringify(configFile));
 
+}
 
   module.exports.run = async (bot, msg, args) => {
     // Create a new text channel
     const createdCh = msg.guild.channels.create('friend-finding')
-      .then((ch) => {msg.reply(`Friend finding channel has now been created ${ch}`);
+    .then((ch) => {
+        msg.reply(`Friend finding channel has now been created ${ch}`);
       return ch
     })
-    .then((channelID) => {
+    .then((ch) => {
+      jsonFileUpdate(`./servers/${msg.guild.id}/server_config.json`, 'ffChannelID', ch.id, msg);
 
-      const specificChannel = msg.guild.channels.cache.find(channel => channel.id === channelID.id);
+      const specificChannel = msg.guild.channels.cache.find(channel => channel.id === ch.id);
       //specificChannel.send("React for friendship ;-;");
       specificChannelID = specificChannel.id;
       return specificChannel;
     })
-    .then((specificChannel) =>{
-
-//review bottom portions to always listen to reactions.
-      var specificMsg = specificChannel.messages.fetch().then((messages) => {
-        if (messages.size === 0) {
-          // Send a new message
-          specificChannel.send(botStartMsg).then((message) => {
-            addReactions(message, botStartReaction)
-          })
-        } else {
-          // Edit the existing message
-          for (const message of messages) {
-            message[1].edit(botStartMsg)
-            addReactions(message[1], botStartReaction)
-          }
-        }
-      })
-      specificMsgID = specificMsg.id;
-      console.log(specificMsg);
-
-      return specificMsg;
-      //return specificChannel;
+    .then((specificChannel) => {
+        // Send a new message
+        return specificChannel.send(botStartMsg);
+    })
+    .then((message) => {
+      addReactions(message, botStartReaction)
+      specificMsgID = message.id;
+      return specificMsgID;
     })
     .then((specificMsg) => {
         //role created.
+        jsonFileUpdate(`./servers/${msg.guild.id}/server_config.json`, 'ffMsgID', specificMsg, msg);
         var roleCreated = msg.guild.roles.create({
           data: {
             name : roleName,
@@ -77,9 +74,11 @@ const addReactions = (message, reactions) => {
         })
         roleID = roleCreated.id;
         return roleCreated;
-    }).then((roleCreated) => {
+    })
+    .then((roleCreated) => {
+      jsonFileUpdate(`./servers/${msg.guild.id}/server_config.json`, 'ffRoleID', roleCreated.id, msg);
       const handleReaction = (reaction, user, add) =>{
-        if(user.id === '670666579167412225'){
+        if(user.id === botID){
           return;
         }
         const emoji = reaction._emoji.name;
@@ -88,13 +87,14 @@ const addReactions = (message, reactions) => {
   
         const role = guild.roles.cache.find(role => role.id === roleCreated.id)
         const member = guild.members.cache.find(member => member.id === user.id);
-  
+
+
         if(role == null)
         {
           console.log('role does not exist');
         }
         else{
-          console.log(role);
+         // console.log(role);
         }
   
         if(add){

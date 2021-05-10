@@ -53,9 +53,20 @@ bot.on('guildDelete', async guild => {
 bot.on('ready', () => {
     bot.user.setActivity("pog-gress");
     //prints all the guilds that the bot is in.
-    const Guilds = bot.guilds.cache.map(guild => guild.id);
-    console.log(Guilds);
+    const guilds = bot.guilds.cache.map(guild => guild.id);
+    // todo next step would be to make a new channel where the bot could start its processes.
+    for(let i = 0; i < guilds.length; i++){
+        let ffChannel = JSON.parse(fs.readFileSync(`./servers/${guilds[i]}/server_config.json`, "utf8"));
+        if(ffChannel.ffChannelID != null){
+            const channel = bot.guilds.cache.get(guilds[i]).channels.cache.get(ffChannel.ffChannelID);
+            return channel.messages.fetch(ffChannel.ffMsgID).then((msg) =>{
+                let commandFile = bot.commands.get("setup");
+                if (commandFile) commandFile.run(bot, msg, []);  
+            })
+        }
+    }
 });
+
 
 
 // On message event

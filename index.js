@@ -52,6 +52,9 @@ bot.on('guildDelete', async guild =>{
 // Bot is ready
 bot.on('ready', () => {
   bot.user.setActivity("pog-gress");
+  //prints all the guilds that the bot is in.
+  const Guilds = bot.guilds.cache.map(guild => guild.id);
+  console.log(Guilds);
   // todo next step would be to make a new channel where the bot could start its processes.
 });
 
@@ -86,5 +89,6 @@ bot.on('message', async msg => {
     if(commandFile) commandFile.run(bot, msg, args);
 
 });
+
 
 bot.login(config.token);

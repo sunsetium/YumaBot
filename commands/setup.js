@@ -15,7 +15,11 @@ var roleID;
 var specificMsgID;
 var specificChannelID;
 emoteName = '😄';
+
 botID = '670666579167412225';
+roleIDAttribute = 'ffRoleID';
+chIDAttribute = 'ffChannelID';
+msgIDAttribute = 'ffMsgID';
 
 const addReactions = (message, reactions) => {
     message.react(reactions[0])
@@ -25,21 +29,73 @@ const addReactions = (message, reactions) => {
     }
   }
 
-function existingCheck()
-{
   //check if setup was already used and is still valid/not deleted
+function setupExists(filepath, bot, msg)
+{
+  var functionalCh;
+
+  let configFile = JSON.parse(fs.readFileSync(filepath, "utf8"));
+  
+  if(configFile[roleIDAttribute] != null)
+  {
+    //console.log("checking for role id: " + configFile[roleIDAttribute]);
+    const checkRole = msg.guild.roles.cache.find(role => role.id === configFile[roleIDAttribute]);
+    //console.log("checking for checkRole " + checkRole);
+    if(checkRole == null)
+    {
+      console.log("role does not exist");
+      return false;
+    }
+  }
+
+  if(configFile[chIDAttribute] != null)
+  {
+    //console.log("checking for channel id: " + configFile[chIDAttribute]);
+    const checkCh = bot.channels.cache.get(configFile[chIDAttribute]);
+    //console.log("checking for checkCh " + checkCh);
+    functionalCh = checkCh;
+    if(checkCh == null)
+    {
+      console.log("channel does not exist");
+      return false;
+    }
+  }
+
+  if(configFile[msgIDAttribute] != null)
+  {
+    //console.log("checking for msg id: " + configFile[msgIDAttribute]);
+    const checkMSGID = functionalCh.messages.cache.get(configFile[msgIDAttribute])
+    //const checkMSGID = functionalCh.messages.fetch(configFile[msgIDAttribute]);
+    //console.log("checking for checkMSGID " + checkMSGID);
+    if (checkMSGID == null)
+    {
+      console.log("message does not exist");
+      return false;
+    }
+  }
+  return true;
 }
+
 
 function jsonFileUpdate(filepath, attribute, newVal, msg)
 {
-  let configFile = JSON.parse(fs.readFileSync(filepath, "utf8"))
-  configFile[attribute] = newVal
-  console.log(configFile);
+  let configFile = JSON.parse(fs.readFileSync(filepath, "utf8"));
+  configFile[attribute] = newVal;
   fs.writeFileSync(`./servers/${msg.guild.id}/server_config.json`, JSON.stringify(configFile));
 
 }
 
   module.exports.run = async (bot, msg, args) => {
+    var fp = `./servers/${msg.guild.id}/server_config.json`;
+    
+    if(setupExists(fp, bot, msg))
+    {
+      console.log("Bot was already setup");
+      return;
+    }
+    //add serverid
+    jsonFileUpdate(`./servers/${msg.guild.id}/server_config.json`, 'serverID', msg.guild.id, msg);
+    
     // Create a new text channel
     const createdCh = msg.guild.channels.create('friend-finding')
     .then((ch) => {
@@ -77,10 +133,12 @@ function jsonFileUpdate(filepath, attribute, newVal, msg)
     })
     .then((roleCreated) => {
       jsonFileUpdate(`./servers/${msg.guild.id}/server_config.json`, 'ffRoleID', roleCreated.id, msg);
+      
       const handleReaction = (reaction, user, add) =>{
         if(user.id === botID){
           return;
         }
+
         const emoji = reaction._emoji.name;
   
         const { guild } = reaction.message
@@ -120,7 +178,7 @@ function jsonFileUpdate(filepath, attribute, newVal, msg)
           handleReaction(reaction,user, false);
         }
       })
-      
+
     })
     .catch(console.error)
 

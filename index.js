@@ -9,10 +9,10 @@ var db = new sqlite3.Database('ff.db');
 
 // Loads all commands
 fs.readdir("./commands/", (err, files) => {
-    if(err) console.log(err);
+    if (err) console.log(err);
 
     let jsfile = files.filter(f => f.split(".").pop() === "js")
-    if(jsfile.length <= 0){
+    if (jsfile.length <= 0) {
         console.log("Couldn't find commands");
         return;
     }
@@ -25,10 +25,10 @@ fs.readdir("./commands/", (err, files) => {
 });
 
 // When bot joined guild
-bot.on('guildCreate', async guild =>{
-    console.log("The bot has now joined guild: "+ guild.id + ": " + guild.name);
+bot.on('guildCreate', async guild => {
+    console.log("The bot has now joined guild: " + guild.id + ": " + guild.name);
     var dirName = `./servers/${guild.id}`;
-    if (!fs.existsSync(dirName)){
+    if (!fs.existsSync(dirName)) {
         fs.mkdirSync(dirName);
         let configJson = {
             prefix: '!',
@@ -37,13 +37,13 @@ bot.on('guildCreate', async guild =>{
             ffRoleID: null
         };
         let data = JSON.stringify(configJson);
-        fs.writeFileSync(`./servers/${guild.id}/server_config.json`,data);
+        fs.writeFileSync(`./servers/${guild.id}/server_config.json`, data);
     }
 });
 
 //When bot leaves guild.
-bot.on('guildDelete', async guild =>{
-    console.log("The bot has now left guild: "+ guild.id + ": " + guild.name);
+bot.on('guildDelete', async guild => {
+    console.log("The bot has now left guild: " + guild.id + ": " + guild.name);
     fs.rmSync(`./servers/${guild.id}`, { recursive: true });
     console.log('deleted corresponding directory');
 });
@@ -51,11 +51,10 @@ bot.on('guildDelete', async guild =>{
 
 // Bot is ready
 bot.on('ready', () => {
-  bot.user.setActivity("pog-gress");
-  //prints all the guilds that the bot is in.
-  const Guilds = bot.guilds.cache.map(guild => guild.id);
-  console.log(Guilds);
-  // todo next step would be to make a new channel where the bot could start its processes.
+    bot.user.setActivity("pog-gress");
+    //prints all the guilds that the bot is in.
+    const Guilds = bot.guilds.cache.map(guild => guild.id);
+    console.log(Guilds);
 });
 
 
@@ -63,13 +62,13 @@ bot.on('ready', () => {
 bot.on('message', async msg => {
 
     // If a bot ignore the message.
-    if(msg.author.bot) return;
+    if (msg.author.bot) return;
 
     // Gets prefixes
     let prefixes = JSON.parse(fs.readFileSync("./prefixes.json", "utf8"));
 
     // If no prefixes found set to the default
-    if(!prefixes[msg.guild.id]){
+    if (!prefixes[msg.guild.id]) {
         prefixes[msg.guild.id] = {
             prefixes: config.prefix
         };
@@ -78,7 +77,7 @@ bot.on('message', async msg => {
     let prefix = prefixes[msg.guild.id].prefixes;
 
     // Ignore messages that do not start with our prefix (default: !).
-    if(msg.content.indexOf(prefix) !== 0) return;
+    if (msg.content.indexOf(prefix) !== 0) return;
 
     // Seperating the command name and its arguments into an array.
     const args = msg.content.slice(prefix.length).trim().split(/ +/g);
@@ -86,7 +85,7 @@ bot.on('message', async msg => {
 
     // Gets the command and args
     let commandFile = bot.commands.get(cmd);
-    if(commandFile) commandFile.run(bot, msg, args);
+    if (commandFile) commandFile.run(bot, msg, args);
 
 });
 

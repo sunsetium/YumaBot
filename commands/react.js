@@ -5,7 +5,7 @@ const fs = require("fs");
 const addReactions = (message, reactions) => {
     message.react(reactions[0])
     reactions.shift()
-    if (reactions.length > 0){
+    if (reactions.length > 0) {
         setTimeout(() => addReactions(message, reactions), 750)
     }
 
@@ -15,12 +15,12 @@ module.exports = async (bot, msg, args, reactions = []) => {
     const channel = await client.channels.fetch(msg.channel)
 
     channel.messages.fetch().then((messages) => {
-        if(messages.size === 0){
+        if (messages.size === 0) {
             //send a new message
             channel.send(text).then((message) => {
-                addReactions(message,reactions)
+                addReactions(message, reactions)
             })
-        } else{
+        } else {
             //edit the existing message
         }
 
@@ -55,7 +55,7 @@ module.exports.run = async (bot, msg, args) => {
     const filter = (reaction, user) => {
         return ['👍', '👎'].includes(reaction.emoji.name) && user.id === msg.author.id;
     };
-    
+
     msg.awaitReactions(filter, { max: 1, time: 60000, errors: ['time'] })
         .then(collected => {
             const reaction = collected.first();

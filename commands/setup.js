@@ -1,7 +1,9 @@
+const { createDiffieHellman } = require("crypto");
 const Discord = require("discord.js");
 const client = new Discord.Client();
 const fs = require("fs");
 const { userInfo } = require("os");
+const { config } = require("process");
 var sqlite3 = require('sqlite3').verbose();
 
 //TODO: Refactor setup.js so that it uses the config file.
@@ -42,7 +44,13 @@ function setupExists(filepath, bot, msg) {
     if (checkRole == null) {
       console.log("role does not exist");
       return false;
+
     }
+  }
+  else
+  {
+    console.log("role does not exist");
+    return false;
   }
 
   if (configFile[chIDAttribute] != null) {
@@ -55,10 +63,15 @@ function setupExists(filepath, bot, msg) {
       return false;
     }
   }
+  else
+  {
+    console.log("channel does not exist");
+    return false;
+  }
+
 
   if (configFile[msgIDAttribute] != null) {
     //console.log("checking for msg id: " + configFile[msgIDAttribute]);
-
     return functionalCh.messages.fetch(configFile[msgIDAttribute])
       .then((msgFound) => {
         if (msgFound.id == null) {
@@ -69,20 +82,13 @@ function setupExists(filepath, bot, msg) {
           return true;
         }
       })
-      return true;
+    return true;
   }
-  /*
-const checkMSGID = functionalCh.messages.cache.get('841385795709435934')
-//console.log(functionalCh);
-//const checkMSGID = functionalCh.messages.fetch(configFile[msgIDAttribute]);
-//console.log("checking for checkMSGID " + checkMSGID);
-if (checkMSGID == null) {
-  console.log("message does not exist");
-  return false;
-}
-}
-return true;
-*/
+  else
+  {
+    console.log("Message does not exist");
+    return false;
+  }
 }
 
 
@@ -90,7 +96,11 @@ function jsonFileUpdate(filepath, attribute, newVal, msg) {
   let configFile = JSON.parse(fs.readFileSync(filepath, "utf8"));
   configFile[attribute] = newVal;
   fs.writeFileSync(`./servers/${msg.guild.id}/server_config.json`, JSON.stringify(configFile));
+}
 
+function jsonFileReader(filepath) {
+  let configFile = JSON.parse(fs.readFileSync(filepath, "utf8"));
+  return configFile;
 }
 
 module.exports.run = async (bot, msg, args) => {
@@ -102,94 +112,110 @@ module.exports.run = async (bot, msg, args) => {
   }
 
   else{
-    //add serverid
-    jsonFileUpdate(`./servers/${msg.guild.id}/server_config.json`, 'serverID', msg.guild.id, msg);
-
-    // Create a new text channel
-    const createdCh = msg.guild.channels.create('friend-finding')
-      .then((ch) => {
-        msg.reply(`Friend finding channel has now been created ${ch}`);
-        return ch
-      })
-      .then((ch) => {
-        jsonFileUpdate(`./servers/${msg.guild.id}/server_config.json`, 'ffChannelID', ch.id, msg);
-
-        const specificChannel = msg.guild.channels.cache.find(channel => channel.id === ch.id);
-        //specificChannel.send("React for friendship ;-;");
-        specificChannelID = specificChannel.id;
-        return specificChannel;
-      })
-      .then((specificChannel) => {
-        // Send a new message
-        return specificChannel.send(botStartMsg);
-      })
-      .then((message) => {
-        addReactions(message, botStartReaction)
-        specificMsgID = message.id;
-        return specificMsgID;
-      })
-      .then((specificMsg) => {
-        //role created.
-        jsonFileUpdate(`./servers/${msg.guild.id}/server_config.json`, 'ffMsgID', specificMsg, msg);
-        var roleCreated = msg.guild.roles.create({
-          data: {
-            name: roleName,
-          },
-          reason: 'We need a role for those that want to participate.'
-        })
-        roleID = roleCreated.id;
-        return roleCreated;
-      })
-      .then((roleCreated) => {
-        jsonFileUpdate(`./servers/${msg.guild.id}/server_config.json`, 'ffRoleID', roleCreated.id, msg);
-
-        const handleReaction = (reaction, user, add) => {
-          if (user.id === botID) {
-            return;
-          }
-
-          const emoji = reaction._emoji.name;
-
-          const { guild } = reaction.message
-
-          const role = guild.roles.cache.find(role => role.id === roleCreated.id)
-          const member = guild.members.cache.find(member => member.id === user.id);
-
-
-          if (role == null) {
-            console.log('role does not exist');
-          }
-          else {
-            // console.log(role);
-          }
-
-          if (add) {
-            member.roles.add(role);
-          }
-          else {
-            member.roles.remove(role);
-          }
-
-        }
-
-        bot.on('messageReactionAdd', (reaction, user) => {
-          if (specificChannelID === reaction.message.channel.id) {
-            handleReaction(reaction, user, true);
-          }
-
-        })
-
-        bot.on('messageReactionRemove', (reaction, user) => {
-          if (specificChannelID === reaction.message.channel.id) {
-            handleReaction(reaction, user, false);
-          }
-        })
-
-      })
-      .catch(console.error)
+    //Promise.all([createFFChannel(bot,msg,args), createFFMessage(bot, msg, args), createFFRole(bot, msg, args), listenFFReactions(bot, msg, args)])
+    await createFFChannel(bot, msg, args);
+    await createFFMessage(bot, msg, args);
+    await createFFRole(bot, msg, args);
+    await listenFFReactions(bot, msg, args);
   }
+}
+
+async function createFFChannel(bot, msg, args) {
+    await console.log("Started FF hcannel function");
+    const createdCh = await msg.guild.channels.create('friend-finding')
+    .then((createdCh) => {
+      jsonFileUpdate(`./servers/${msg.guild.id}/server_config.json`, chIDAttribute, createdCh.id, msg);
+    })
+}
 
 
+ function createFFMessage(bot, msg, args) {
+   console.log("Started createFFMessage function");
+  configFile = jsonFileReader(`./servers/${msg.guild.id}/server_config.json`);
+
+  const channel = bot.guilds.cache.get(msg.guild.id).channels.cache.get(configFile[chIDAttribute]);
+  //const checkChID = bot.channels.cache.get(configFile[chIDAttribute]);
+  //let checkCh = msg.guild.channels.cache.find(channel => channel.id === checkChID);
+  let newMsg = channel.send(botStartMsg)
+  .then(async (newMsg) => {
+    await jsonFileUpdate(`./servers/${msg.guild.id}/server_config.json`,msgIDAttribute, newMsg.id, msg);
+    await addReactions(newMsg, botStartReaction);
+  })
+}
+
+function createFFRole(bot, msg, args) {
+    console.log("Started createFFRole function");
+    var roleCreated = msg.guild.roles.create({
+      data: {
+        name: roleName,
+      },
+      reason: 'We need a role for those that want to participate.'
+    })
+    .then(async (roleCreated) => {
+      await jsonFileUpdate(`./servers/${msg.guild.id}/server_config.json`, roleIDAttribute, roleCreated.id, msg);
+    })
+}
+
+function listenFFReactions(bot, msg, args) {
+  console.log("Started listenFFReactions function");
+    const handleReaction = (reaction, user, add) => {
+      if (user.id === botID) {
+        return;
+      }
+
+      const emoji = reaction._emoji.name;
+      const { guild } = reaction.message
+
+      console.log("TEST 1");
+      configFile = jsonFileReader(`./servers/${msg.guild.id}/server_config.json`);
+      
+      console.log(configFile[roleIDAttribute]);
+      console.log("TEST 2");
+      const role = guild.roles.cache.find(role => role.id === configFile[roleIDAttribute])
+      const member = guild.members.cache.find(member => member.id === user.id);
+
+      if (role == null) {
+        console.log('role does not exist');
+      }
+      else {
+        // console.log(role);
+      }
+
+      if (add) {
+        member.roles.add(role);
+      }
+      else {
+        member.roles.remove(role);
+      }
+
+    }
+
+    configFile = jsonFileReader(`./servers/${msg.guild.id}/server_config.json`);
+    
+    bot.on('messageReactionAdd', (reaction, user) => {
+      if (configFile[chIDAttribute]== reaction.message.channel.id) {
+        console.log(configFile[chIDAttribute].id + " " + reaction.message.channel.id);
+        handleReaction(reaction, user, true);
+        console.log("handle reaction add");
+
+      }
+      else{
+        console.log(configFile[chIDAttribute].id + " " + reaction.message.channel.id);
+        console.log("channel id is no juud add");
+      }
+    })
+
+    bot.on('messageReactionRemove', (reaction, user) => {
+      if (configFile[chIDAttribute] == reaction.message.channel.id) {
+        console.log("handle reaction remove");
+        console.log(configFile[chIDAttribute] + " " + reaction.message.channel.id);
+        handleReaction(reaction, user, false);
+      }
+      else{
+        console.log(configFile[chIDAttribute].id + " " + reaction.message.channel.id);
+        console.log("channel id is no juud remove");
+      }
+    })
 }
 
 module.exports.help = {

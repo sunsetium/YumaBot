@@ -36,15 +36,25 @@ module.exports.run = async (bot, msg, args) => {
                         WHERE  userID=${userID}`)
             }
         })
+    } else{
+        db.all(`SELECT userID 
+                FROM   users 
+                WHERE  userID=${userID}`, [], (err, rows) => {
+            if (rows.length != 0) {
+                db.run(`UPDATE users 
+                        SET    status = 0 
+                        WHERE  userID=${userID}`)
+            }
+        })
     }*/
 
-    /*let duration = GET FROM ARGUMENTS
+    //let duration = GET FROM ARGUMENTS
     setTimeout(() => {
         db.all(`SELECT * 
                 FROM   users 
                 WHERE  status != 0 
                 ORDER  BY status DESC,
-                random()`, [], (err, rows) => {
+                          random()`, [], (err, rows) => {
             if (err) throw err;
 
             for (let i = 0; i < rows.length; i += 2) {
@@ -69,7 +79,7 @@ module.exports.run = async (bot, msg, args) => {
             }
         });
         db.close();
-    }, duration);*/
+    }, duration);
 }
 
 // Checks if a user as already spoken to another user

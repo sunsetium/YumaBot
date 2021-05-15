@@ -62,8 +62,8 @@ bot.on('ready', () => {
         if(ffChannel.ffChannelID != null){
             const channel = bot.guilds.cache.get(guilds[i]).channels.cache.get(ffChannel.ffChannelID);
             return channel.messages.fetch(ffChannel.ffMsgID).then((msg) =>{
-                let commandFile = bot.commands.get("setup");
-                if (commandFile) commandFile.run(bot, msg, []);  
+                let commandFile = bot.commands.get("friendfinder");
+                if (commandFile) commandFile.run(bot, msg, ["setup"]);  
             })
         }
     }

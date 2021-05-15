@@ -10,11 +10,11 @@ var sqlite3 = require('sqlite3').verbose();
 
 const roleName = 'Looking for Friend';
 const botStartMsg = "Friendship ;-; plz";
-botStartReaction = ['😄'];
+botStartReaction = ['✅'];
 var roleID;
 var specificMsgID;
 var specificChannelID;
-emoteName = '😄';
+emoteName = '✅';
 
 botID = '670666579167412225';
 roleIDAttribute = 'ffRoleID';

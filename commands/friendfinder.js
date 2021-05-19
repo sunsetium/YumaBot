@@ -70,13 +70,17 @@ const addReactions = (message, reactions) => {
   message.react(reactions[0]);
 }
 
-function sendPrivateMsg(user1, user2, bot) {
+function sendPrivateMsg(user1, user2, bot, guild) {
   bot.users.fetch(user1, false).then((user) => {
-    user.send(`<@${user2}> is your new best friend`);
+    user.send(
+`You have been matched with <@${user2}>, from ${guild.name}
+If you would like to continue using this service, please re-react to the message in ${guild.name}`);
   });
 
   bot.users.fetch(user2, false).then((user) => {
-    user.send(`<@${user1}> is your new best friend`);
+    user.send(
+`You have been matched with <@${user1}>, from ${guild.name}
+If you would like to continue using this service, please re-react to the message in ${guild.name}`);
   });
 }
 
@@ -130,7 +134,7 @@ async function matching(msg, db, bot) {
               console.log(`${msg.guild.id}::::::::${rows[i].userID} is matched with ${rows[i + 1].userID}`)
               updateUsers(rows[i].userID, rows[i + 1].userID, 0, db)
               addToHistory(rows[i].userID, rows[i + 1].userID, db)
-              sendPrivateMsg(rows[i].userID, rows[i + 1].userID, bot)
+              sendPrivateMsg(rows[i].userID, rows[i + 1].userID, bot, msg.guild)
             } else {
               updateUsers(rows[i].userID, rows[i + 1].userID, 2, db)
               console.log(`${msg.guild.id}::::::::${rows[i].userID} already mached with ${rows[i + 1].userID} send to priority queue`)

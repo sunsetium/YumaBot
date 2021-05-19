@@ -1,10 +1,7 @@
-//const { ENOTEMPTY } = require("constants");
-//const { createDiffieHellman } = require("crypto");
+const { match } = require("assert");
 const Discord = require("discord.js");
 const client = new Discord.Client();
 const fs = require("fs");
-//const { userInfo } = require("os");
-//const { config } = require("process");
 var sqlite3 = require('sqlite3').verbose();
 
 //TODO: Refactor setup.js so that it uses the config file.
@@ -17,6 +14,8 @@ const botStartReaction = ['✅'];
 var roleID;
 var specificMsgID;
 var specificChannelID;
+var interval;
+var defaultTimer = "5";
 
 botID = '670666579167412225';
 roleIDAttribute = 'ffRoleID';
@@ -26,7 +25,7 @@ var emote;
 
 module.exports.run = async (bot, msg, args) => {
   if (!msg.member.hasPermission("MANAGE_SERVER")) return;
-  if (!args[0] || args[0] === "help") return msg.reply("Usage: !friendfinder setup <time>[D|H|M|S]");
+  if (!args[0] || args[0] === "help") return msg.reply("Usage: !friendfinder setup <time (In hours)>");
 
   if (args[0] == "setup") {
     var db = new sqlite3.Database(`./servers/${msg.guild.id}/${msg.guild.id}.db`);
@@ -34,53 +33,14 @@ module.exports.run = async (bot, msg, args) => {
 
     await setupExists(fp, bot, msg, db);
     await listenFFReactions(bot, msg, db);
+    await updateTimer(args, db)
+    timerstuff(msg, bot)
+  }
 
-    const MILLISECONDS = 1000;
-    var time = await args[0].substr(0, args[0].length - 1);
-    var duration;
-
-    if (args[0].match(/d/gi)) {
-      duration = time * 86400 * MILLISECONDS;
-    } else if (args[0].match(/h/gi)) {
-      duration = time * 3600 * MILLISECONDS;
-    } else if (args[0].match(/m/gi)) {
-      duration = time * 60 * MILLISECONDS;
-    } else {
-      duration = time * MILLISECONDS;
-    }
-
-    setTimeout(() => {
-      db.all(`SELECT * 
-              FROM   users 
-              WHERE  status != 0 
-              ORDER  BY status DESC,
-                        random()`, [], (err, rows) => {
-        if (err) throw err;
-
-        for (let i = 0; i < rows.length; i += 2) {
-          if (rows[i + 1]) {
-            Promise.all([checkHistory(rows[i].userID, rows[i + 1].userID, db)])
-              .then((talkedTo) => {
-                if (!talkedTo[0]) {
-                  console.log(`${rows[i].userID} is matched with ${rows[i + 1].userID}`)
-                  updateUsers(rows[i].userID, rows[i + 1].userID, 0, db)
-                  addToHistory(rows[i].userID, rows[i + 1].userID, db)
-                  sendPrivateMsg(rows[i].userID, rows[i + 1].userID, bot)
-                } else {
-                  updateUsers(rows[i].userID, rows[i + 1].userID, 2, db)
-                  console.log(`${rows[i].userID} already mached with ${rows[i + 1].userID} send to priority queue`)
-                }
-              })
-          } else {
-            db.run(`UPDATE users 
-                    SET    status = 2
-                    WHERE  userID = '${rows[i].userID}'`)
-            console.log(`${rows[i].userID} is ignored, send to priority queue`)
-          }
-        }
-      });
-    }, 500);
-
+  if (args[0] == 'timer') {
+    var db = new sqlite3.Database(`./servers/${msg.guild.id}/${msg.guild.id}.db`);
+    defaultTimer = await updateTimer(args, db);
+    timerstuff(msg, bot)
   }
 }
 
@@ -88,13 +48,79 @@ const addReactions = (message, reactions) => {
   message.react(reactions[0]);
 }
 
-function sendPrivateMsg(user1, user2, bot){
+function sendPrivateMsg(user1, user2, bot) {
   bot.users.fetch(user1, false).then((user) => {
     user.send(`<@${user2}> is your new best friend`);
   });
 
   bot.users.fetch(user2, false).then((user) => {
     user.send(`<@${user1}> is your new best friend`);
+  });
+}
+
+async function timerstuff(msg, bot) {
+  setInterval(() => {
+    let currentTime = Date.now();
+    var db = new sqlite3.Database(`./servers/${msg.guild.id}/${msg.guild.id}.db`);
+    db.all(`SELECT timestamp, timerMillis
+              FROM   timers`, [], (err, rows) => {
+      if (err) throw err;
+      console.log(Math.floor((currentTime - rows[0].timestamp)))
+      if (Math.floor((currentTime - rows[0].timestamp)) >= rows[0].timerMillis) {
+        db.run(`UPDATE timers SET timestamp = ${currentTime} WHERE timerID = 1`);
+        matching(msg, db, bot)
+      }
+    })
+  }, 1000);
+}
+
+async function updateTimer(args, db) {
+  if (args[1] == null) {
+    args[1] = defaultTimer;
+  }
+  args[1] = args[1] /** 3600*/ * 1000;
+  db.all(`SELECT * FROM timers`, [], (err, rows) => {
+    if (rows == null && args[0] != 'timer') {
+      db.run(`INSERT INTO timers (timestamp, timerMIllis)
+              VALUES (${Date.now()}, ${args[1]})`)
+    } else if (args[0] == 'timer') {
+      db.run(`UPDATE timers
+              SET timerMillis = ${args[1]},
+                  timestamp = ${Date.now()}
+              WHERE timerID = 1`)
+    }
+  })
+}
+
+async function matching(msg, db, bot) {
+  db.all(`SELECT * 
+          FROM   users 
+          WHERE  status != 0 
+          ORDER  BY status DESC,
+                    random()`, [], (err, rows) => {
+    if (err) throw err;
+
+    for (let i = 0; i < rows.length; i += 2) {
+      if (rows[i + 1]) {
+        Promise.all([checkHistory(rows[i].userID, rows[i + 1].userID, db)])
+          .then((talkedTo) => {
+            if (!talkedTo[0]) {
+              console.log(`${msg.guild.id}::::::::${rows[i].userID} is matched with ${rows[i + 1].userID}`)
+              updateUsers(rows[i].userID, rows[i + 1].userID, 0, db)
+              addToHistory(rows[i].userID, rows[i + 1].userID, db)
+              sendPrivateMsg(rows[i].userID, rows[i + 1].userID, bot)
+            } else {
+              updateUsers(rows[i].userID, rows[i + 1].userID, 2, db)
+              console.log(`${msg.guild.id}::::::::${rows[i].userID} already mached with ${rows[i + 1].userID} send to priority queue`)
+            }
+          })
+      } else {
+        db.run(`UPDATE users 
+                    SET    status = 2
+                    WHERE  userID = '${rows[i].userID}'`)
+        console.log(`${msg.guild.id}::::::::${rows[i].userID} is ignored, send to priority queue`)
+      }
+    }
   });
 }
 
@@ -115,6 +141,13 @@ async function setupExists(filepath, bot, msg, db) {
                     historyID INTEGER PRIMARY KEY AUTOINCREMENT,
                     userID TEXT,
                     spokenToID TEXT);`, [], (err) => {
+      if (err) console.log(err)
+    });
+
+    db.run(`CREATE TABLE IF NOT EXISTS timers(
+                    timerID INTEGER PRIMARY KEY AUTOINCREMENT,
+                    timestamp TEXT,
+                    timerMillis TEXT);`, [], (err) => {
       if (err) console.log(err)
     });
   }
@@ -148,10 +181,10 @@ async function setupExists(filepath, bot, msg, db) {
   }
 }
 
-function jsonFileUpdate(filepath, attribute, newVal, msg) {
+function jsonFileUpdate(filepath, attribute, newVal) {
   let configFile = JSON.parse(fs.readFileSync(filepath, "utf8"));
   configFile[attribute] = newVal;
-  fs.writeFileSync(`./servers/${msg.guild.id}/server_config.json`, JSON.stringify(configFile));
+  fs.writeFileSync(filepath, JSON.stringify(configFile));
 }
 
 function jsonFileReader(filepath) {
@@ -168,7 +201,7 @@ function jsonFileAddServerID(filepath, attribute, newVal, msg) {
 async function createFFChannel(bot, msg) {
   const createdCh = await msg.guild.channels.create('friend-finding')
     .then((createdCh) => {
-      jsonFileUpdate(`./servers/${msg.guild.id}/server_config.json`, chIDAttribute, createdCh.id, msg);
+      jsonFileUpdate(`./servers/${msg.guild.id}/server_config.json`, chIDAttribute, createdCh.id);
     })
 }
 
@@ -181,7 +214,7 @@ function createFFMessage(bot, msg) {
   //let checkCh = msg.guild.channels.cache.find(channel => channel.id === checkChID);
   let newMsg = channel.send(botStartMsg)
     .then(async (newMsg) => {
-      await jsonFileUpdate(`./servers/${msg.guild.id}/server_config.json`, msgIDAttribute, newMsg.id, msg);
+      await jsonFileUpdate(`./servers/${msg.guild.id}/server_config.json`, msgIDAttribute, newMsg.id);
       await addReactions(newMsg, botStartReaction);
     })
 }
@@ -194,63 +227,65 @@ function createFFRole(bot, msg) {
     reason: 'We need a role for those that want to participate.'
   })
     .then(async (roleCreated) => {
-      await jsonFileUpdate(`./servers/${msg.guild.id}/server_config.json`, roleIDAttribute, roleCreated.id, msg);
+      await jsonFileUpdate(`./servers/${msg.guild.id}/server_config.json`, roleIDAttribute, roleCreated.id);
     })
 }
 
-function listenFFReactions(bot, msg, db) {
-  const handleReaction = (reaction, user, add) => {
+async function listenFFReactions(bot, msg, db) {
+  console.log(`${msg.guild.id}::::::::are you is here`);
+  const handleReaction = async (reaction, user, add) => {
     if (user.id === botID) {
       return;
     }
-    const emoji = reaction._emoji.name;
-    const { guild } = reaction.message
-    configFile = jsonFileReader(`./servers/${msg.guild.id}/server_config.json`);
+    const emoji = await reaction._emoji.name;
+    const { guild } = await reaction.message
+    let configFile = await jsonFileReader(`./servers/${msg.guild.id}/server_config.json`);
 
-    const role = guild.roles.cache.find(role => role.id === configFile[roleIDAttribute])
-    const member = guild.members.cache.find(member => member.id === user.id);
+    var role = await msg.guild.roles.cache.find(role => role.id === configFile[roleIDAttribute]);
+    var member = await msg.guild.members.cache.get(user.id);
 
     if (role == null) {
-      console.log('role does not exist');
-    }
-    if (add) {
-      member.roles.add(role);
-      db.all(`SELECT userID 
-              FROM   users 
-              WHERE  userID=${user.id}`, [], (err, rows) => {
-        if (rows.length == 0) {
-          db.run(`INSERT INTO users VALUES(${user.id}, 1)`)
-        } else {
-          db.run(`UPDATE users 
-                        SET    status = 1 
-                        WHERE  userID=${user.id}`)
-        }
-      })
-    }
-    else {
-      member.roles.remove(role);
-      db.all(`SELECT userID 
+      console.log(`${msg.guild.id} role does not exist`);
+    } else {
+      if (add) {
+        await member.roles.add(role)
+        db.all(`SELECT userID 
+                FROM   users 
+                WHERE  userID=${user.id}`, [], (err, rows) => {
+          if (rows.length == 0) {
+            db.run(`INSERT INTO users VALUES(${user.id}, 1)`)
+          } else {
+            db.run(`UPDATE users 
+                    SET    status = 1 
+                    WHERE  userID=${user.id}`)
+          }
+        })
+      }
+      else {
+        await member.roles.remove(role)
+        db.all(`SELECT userID 
                 FROM   users 
                 WHERE  userID='${user.id}'`, [], (err, rows) => {
-        if (rows.length != 0) {
-          db.run(`UPDATE users 
-                        SET    status = 0 
-                        WHERE  userID='${user.id}'`)
-        }
-      })
+          if (rows.length != 0) {
+            db.run(`UPDATE users 
+                    SET    status = 0 
+                    WHERE  userID='${user.id}'`)
+          }
+        })
+      }
     }
 
   }
 
-  configFile = jsonFileReader(`./servers/${msg.guild.id}/server_config.json`);
+  let configFile = await jsonFileReader(`./servers/${msg.guild.id}/server_config.json`);
 
-  bot.on('messageReactionAdd', (reaction, user) => {
+  bot.on('messageReactionAdd', async (reaction, user) => {
     if (configFile[chIDAttribute] == reaction.message.channel.id) {
       handleReaction(reaction, user, true);
     }
   })
 
-  bot.on('messageReactionRemove', (reaction, user) => {
+  bot.on('messageReactionRemove', async (reaction, user) => {
     if (configFile[chIDAttribute] == reaction.message.channel.id) {
       handleReaction(reaction, user, false);
     }

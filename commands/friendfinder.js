@@ -9,8 +9,24 @@ var sqlite3 = require('sqlite3').verbose();
 //TODO: Make it always listen even after going offline.
 
 const roleName = 'Looking for Friend';
-const botStartMsg = "Friendship ;-; plz";
 const botStartReaction = ['✅'];
+const botStartMsg = `Friendfinder will match you with someone that has opted-in for the service in this server and direct message you the randomly matched person's discord handle.
+\nIf you have already matched with a specific person, don't worry as you won't be matched with them again in this server.
+\nReact with ${botStartReaction[0]} to get the Looking for friend role. This would be an opt-in for our friend finding service.
+\nYou'll be receiving a direct message from the bot with the discord handle of the person you are paired with.`;
+
+const botSetupMsg =     
+`Welcome to the Friendship Finding feature:
+
+[prefix]friendfinder setup <timer>
+
+Yuma bot has now created a channel named #friend-finding and sent a message to the newly created channel with a reaction.
+Users that react to this message will be opting-in to be paired with another user that has reacted to the message.
+Every given time (timer can only be set in hours), users that are paired will receive a direct message with the other individuals Discord handle.
+Yuma has created a role to users that are currently opted-in for the service.
+Timer default is currently set to ${defaultTimer} seconds 
+This will hopefully allow users to create meaningful friendships.`;
+
 var roleID;
 var specificMsgID;
 var specificChannelID;
@@ -28,6 +44,12 @@ module.exports.run = async (bot, msg, args) => {
   if (!args[0] || args[0] === "help") return msg.reply("Usage: !friendfinder setup <time (In hours)>");
 
   if (args[0] == "setup") {
+
+    if(!msg.author.bot)
+    {
+      await msg.channel.send(botSetupMsg);
+    }
+
     var db = new sqlite3.Database(`./servers/${msg.guild.id}/${msg.guild.id}.db`);
     var fp = await `./servers/${msg.guild.id}/server_config.json`;
 
@@ -80,7 +102,7 @@ async function updateTimer(args, db) {
   }
   args[1] = args[1] /** 3600*/ * 1000;
   db.all(`SELECT * FROM timers`, [], (err, rows) => {
-    if (rows.length == 0 && args[0] != 'timer') {
+    if (rows == null || rows.length == 0 && args[0] != 'timer') {
       db.run(`INSERT INTO timers (timestamp, timerMIllis)
               VALUES (${Date.now()}, ${args[1]})`)
     } else if (args[0] == 'timer') {

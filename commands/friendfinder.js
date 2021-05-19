@@ -242,7 +242,7 @@ async function listenFFReactions(bot, msg, db) {
     let configFile = await jsonFileReader(`./servers/${msg.guild.id}/server_config.json`);
 
     var role = await msg.guild.roles.cache.find(role => role.id === configFile[roleIDAttribute]);
-    var member = await msg.guild.members.cache.get(user.id);
+    var member = await msg.guild.members.fetch(user.id);
 
     if (role == null) {
       console.log(`${msg.guild.id} role does not exist`);

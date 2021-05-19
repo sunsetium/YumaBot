@@ -80,7 +80,7 @@ async function updateTimer(args, db) {
   }
   args[1] = args[1] /** 3600*/ * 1000;
   db.all(`SELECT * FROM timers`, [], (err, rows) => {
-    if (rows == null && args[0] != 'timer') {
+    if (rows.length == 0 && args[0] != 'timer') {
       db.run(`INSERT INTO timers (timestamp, timerMIllis)
               VALUES (${Date.now()}, ${args[1]})`)
     } else if (args[0] == 'timer') {

@@ -35,7 +35,8 @@ bot.on('guildCreate', async guild => {
             serverID: guild.id,
             ffMsgID: null,
             ffChannelID: null,
-            ffRoleID: null
+            ffRoleID: null,
+            isUsingFF: false
         };
         let data = JSON.stringify(configJson);
         fs.writeFileSync(`./servers/${guild.id}/server_config.json`, data);

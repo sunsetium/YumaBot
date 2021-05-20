@@ -1,95 +1,125 @@
-const { match } = require("assert");
 const Discord = require("discord.js");
 const client = new Discord.Client();
 const fs = require("fs");
 var sqlite3 = require('sqlite3').verbose();
 
-//TODO: Refactor setup.js so that it uses the config file.
-//TODO: check for existing channel/role to avoid duplicates.
-//TODO: Make it always listen even after going offline.
-
 const roleName = 'Looking for Friend';
 const botStartReaction = ['✅'];
-const botStartMsg = `Friendfinder will match you with someone that has opted-in for the service in this server and direct message you the randomly matched person's discord handle.
-\nIf you have already matched with a specific person, don't worry as you won't be matched with them again in this server.
-\nReact with ${botStartReaction[0]} to get the Looking for friend role. This would be an opt-in for our friend finding service.
-\nYou'll be receiving a direct message from the bot with the discord handle of the person you are paired with.`;
+var defaultTimer = 5;
+const botStartMsg =
+`>>> Friendfinder will match you with someone that has opted-in for the service in this server and direct message you the randomly matched person's discord handle.
 
-const botSetupMsg =     
-`Welcome to the Friendship Finding feature:
+If you have already matched with a specific person, don't worry as you won't be matched with them again in this server.
+
+React with :white_check_mark: to get the Looking for friend role. This would be an opt-in for our friend finding service.
+
+You'll be receiving a direct message from the bot with the discord handle of the person you are paired with`;
+
+const botSetupMsg =
+`>>> Welcome to the Friendship Finding feature:
 
 [prefix]friendfinder setup <timer>
 
-Yuma bot has now created a channel named #friend-finding and sent a message to the newly created channel with a reaction.
+This feature allows users within your discord community to connect with each other. Once a user opts-in, they get randomly matched with another user from your Discord Community.
+Yuma keeps a history of users matched, so they do not end up matching with the same person more than once.
+
+Yuma bot has now created a channel named #friend-finding and a Looking for Friend role, and it has sent a message to the newly created channel with a reaction.
 Users that react to this message will be opting-in to be paired with another user that has reacted to the message.
 Every given time (timer can only be set in hours), users that are paired will receive a direct message with the other individuals Discord handle.
 Yuma has created a role to users that are currently opted-in for the service.
-Timer default is currently set to ${defaultTimer} seconds 
-This will hopefully allow users to create meaningful friendships.`;
+Timer default is currently set to ${defaultTimer} hour 
+This will hopefully allow users to create meaningful friendships.
 
-var roleID;
-var specificMsgID;
-var specificChannelID;
-var interval;
-var defaultTimer = "5";
+You may rename the friend-finding channel name and the Looking for Friend role name. However, please refrain from deleting the channels manually.
+
+You may end the friendfinder feature by typing
+
+[prefix]friendfinder end
+
+This will delete the message created by the bot, the role, and the channel. However, it will keep the history of the users that have been matched in the past.
+You may enable the feature once again by using the: [prefix]friendfinder setup <timer> command.`;
 
 botID = '670666579167412225';
 roleIDAttribute = 'ffRoleID';
 chIDAttribute = 'ffChannelID';
 msgIDAttribute = 'ffMsgID';
-var emote;
+isUsingFFAttribute = 'isUsingFF';
 
+// Main function that will run
 module.exports.run = async (bot, msg, args) => {
   if (!msg.member.hasPermission("MANAGE_SERVER")) return;
   if (!args[0] || args[0] === "help") return msg.reply("Usage: !friendfinder setup <time (In hours)>");
 
   if (args[0] == "setup") {
 
-    if(!msg.author.bot)
-    {
+    if (!msg.author.bot) {
       await msg.channel.send(botSetupMsg);
     }
 
     var db = new sqlite3.Database(`./servers/${msg.guild.id}/${msg.guild.id}.db`);
     var fp = await `./servers/${msg.guild.id}/server_config.json`;
+    jsonFileUpdate(fp, isUsingFFAttribute, true);
 
     await setupExists(fp, bot, msg, db);
     await listenFFReactions(bot, msg, db);
     await updateTimer(args, db)
-    timerstuff(msg, bot)
+    timerstuff(msg, bot, args)
   }
-
   if (args[0] == 'timer') {
     var db = new sqlite3.Database(`./servers/${msg.guild.id}/${msg.guild.id}.db`);
-    defaultTimer = await updateTimer(args, db);
-    timerstuff(msg, bot)
+    await updateTimer(args, db);
+  }
+  if (args[0] == 'end') {
+    var fp = await `./servers/${msg.guild.id}/server_config.json`;
+    var db = new sqlite3.Database(`./servers/${msg.guild.id}/${msg.guild.id}.db`);
+    await jsonFileUpdate(fp, isUsingFFAttribute, false);
+    var configFile = await jsonFileReader(fp);
+    const channel = await bot.guilds.cache.get(msg.guild.id).channels.cache.get(configFile[chIDAttribute]);
+    var role = await msg.guild.roles.cache.find(role => role.id === configFile[roleIDAttribute]);
+    channel.delete();
+    role.delete();
+    await jsonFileUpdate(fp, chIDAttribute, null);
+    await jsonFileUpdate(fp, msgIDAttribute, null);
+    await jsonFileUpdate(fp, roleIDAttribute, null);
+    db.run(`UPDATE users SET status = 0 WHERE userID >= 1`);
+    db.close();
   }
 }
 
+// Adds reaction to the main message
 const addReactions = (message, reactions) => {
   message.react(reactions[0]);
 }
 
+// Sends a private message to both users who were matched
 function sendPrivateMsg(user1, user2, bot, guild) {
   bot.users.fetch(user1, false).then((user) => {
     user.send(
-`You have been matched with <@${user2}>, from ${guild.name}
+`>>> You have been matched with <@${user2}>, from ${guild.name}
+In order to speak with them you must send them a message.
 If you would like to continue using this service, please re-react to the message in ${guild.name}`);
   });
 
   bot.users.fetch(user2, false).then((user) => {
     user.send(
-`You have been matched with <@${user1}>, from ${guild.name}
+`>>> You have been matched with <@${user1}>, from ${guild.name}
+In order to speak with them you must send them a message.
 If you would like to continue using this service, please re-react to the message in ${guild.name}`);
   });
 }
 
+// Will keep checking if its time to match every 1 hour
 async function timerstuff(msg, bot) {
-  setInterval(() => {
-    let currentTime = Date.now();
+  var interval = setInterval(() => {
+    var fp = `./servers/${msg.guild.id}/server_config.json`;
+    var json = jsonFileReader(fp);
+    if (!json[isUsingFFAttribute]) {
+      clearInterval(interval);
+    }
     var db = new sqlite3.Database(`./servers/${msg.guild.id}/${msg.guild.id}.db`);
+    let currentTime = Date.now();
     db.all(`SELECT timestamp, timerMillis
-              FROM   timers`, [], (err, rows) => {
+            FROM   timers`, [], (err, rows) => {
       if (err) throw err;
       console.log(Math.floor((currentTime - rows[0].timestamp)))
       if (Math.floor((currentTime - rows[0].timestamp)) >= rows[0].timerMillis) {
@@ -97,14 +127,15 @@ async function timerstuff(msg, bot) {
         matching(msg, db, bot)
       }
     })
-  }, 1000);
+  }, 3600000);
 }
 
+// Updates the time for when the server should match users
 async function updateTimer(args, db) {
   if (args[1] == null) {
     args[1] = defaultTimer;
   }
-  args[1] = args[1] /** 3600*/ * 1000;
+  args[1] = args[1] * 3600 * 1000;
   db.all(`SELECT * FROM timers`, [], (err, rows) => {
     if (rows == null || rows.length == 0 && args[0] != 'timer') {
       db.run(`INSERT INTO timers (timestamp, timerMIllis)
@@ -118,6 +149,7 @@ async function updateTimer(args, db) {
   })
 }
 
+// Matches users that have a status of 1 or 2
 async function matching(msg, db, bot) {
   db.all(`SELECT * 
           FROM   users 
@@ -207,23 +239,20 @@ async function setupExists(filepath, bot, msg, db) {
   }
 }
 
+// Updates the servers config json
 function jsonFileUpdate(filepath, attribute, newVal) {
   let configFile = JSON.parse(fs.readFileSync(filepath, "utf8"));
   configFile[attribute] = newVal;
   fs.writeFileSync(filepath, JSON.stringify(configFile));
 }
 
+// Reads the servers config json
 function jsonFileReader(filepath) {
   let configFile = JSON.parse(fs.readFileSync(filepath, "utf8"));
   return configFile;
 }
 
-function jsonFileAddServerID(filepath, attribute, newVal, msg) {
-  let configFile = JSON.parse(fs.readFileSync(filepath, "utf8"));
-  configFile[attribute] = newVal;
-  fs.writeFileSync(`./servers/${msg.guild.id}/server_config.json`, JSON.stringify(configFile));
-}
-
+// Creates the friend finding channel
 async function createFFChannel(bot, msg) {
   const createdCh = await msg.guild.channels.create('friend-finding')
     .then((createdCh) => {
@@ -231,7 +260,7 @@ async function createFFChannel(bot, msg) {
     })
 }
 
-
+// Creates the friend finding message to react to 
 function createFFMessage(bot, msg) {
   configFile = jsonFileReader(`./servers/${msg.guild.id}/server_config.json`);
 
@@ -245,6 +274,7 @@ function createFFMessage(bot, msg) {
     })
 }
 
+// Creates the friend finding role for easy mentioning of users
 function createFFRole(bot, msg) {
   var roleCreated = msg.guild.roles.create({
     data: {
@@ -256,7 +286,12 @@ function createFFRole(bot, msg) {
       await jsonFileUpdate(`./servers/${msg.guild.id}/server_config.json`, roleIDAttribute, roleCreated.id);
     })
 }
-
+/**
+ * Listens to when a user reacts to the friend finding message, it will add them to 
+ * the friend finding role and to the database with a status of 1.
+ * If they un-react, they will be set to a status of 0 in the database and removed from
+ * the role.
+ */
 async function listenFFReactions(bot, msg, db) {
   console.log(`${msg.guild.id}::::::::are you is here`);
   const handleReaction = async (reaction, user, add) => {

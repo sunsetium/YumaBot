@@ -3,8 +3,6 @@ const config = require("./config.json");
 const fs = require("fs");
 const bot = new Discord.Client();
 bot.commands = new Discord.Collection();
-var sqlite3 = require('sqlite3').verbose();
-var db = new sqlite3.Database('ff.db');
 
 
 // Loads all commands

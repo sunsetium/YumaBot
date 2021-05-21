@@ -1,6 +1,7 @@
 const Discord = require("discord.js");
 const config = require("./config.json");
 const fs = require("fs");
+var jsonManip = require('./tools/json_manipulation.js');
 const bot = new Discord.Client();
 bot.commands = new Discord.Collection();
 
@@ -80,16 +81,9 @@ bot.on('message', async msg => {
     if (msg.author.bot) return;
 
     // Gets prefixes
-    let prefixes = JSON.parse(fs.readFileSync("./prefixes.json", "utf8"));
+    let prefixes = jsonManip.jsonFileReader(`./servers/${msg.guild.id}/server_config.json`);
 
-    // If no prefixes found set to the default
-    if (!prefixes[msg.guild.id]) {
-        prefixes[msg.guild.id] = {
-            prefixes: config.prefix
-        };
-    }
-
-    let prefix = prefixes[msg.guild.id].prefixes;
+    let prefix = prefixes['prefix'];
 
     // Ignore messages that do not start with our prefix (default: !).
     if (msg.content.indexOf(prefix) !== 0) return;

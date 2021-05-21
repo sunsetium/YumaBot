@@ -2,10 +2,11 @@ const Discord = require("discord.js");
 const client = new Discord.Client();
 const fs = require("fs");
 var sqlite3 = require('sqlite3').verbose();
+var jsonManip = require('../tools/json_manipulation.js');
 
 const roleName = 'Looking for Friend';
 const botStartReaction = ['✅'];
-var defaultTimer = 5;
+var defaultTimer = '5';
 const botStartMsg =
 `>>> Friendfinder will match you with someone that has opted-in for the service in this server and direct message you the randomly matched person's discord handle.
 
@@ -58,7 +59,7 @@ module.exports.run = async (bot, msg, args) => {
 
     var db = new sqlite3.Database(`./servers/${msg.guild.id}/${msg.guild.id}.db`);
     var fp = await `./servers/${msg.guild.id}/server_config.json`;
-    jsonFileUpdate(fp, isUsingFFAttribute, true);
+    jsonManip.jsonFileUpdate(fp, isUsingFFAttribute, true);
 
     await setupExists(fp, bot, msg, db);
     await listenFFReactions(bot, msg, db);
@@ -72,15 +73,15 @@ module.exports.run = async (bot, msg, args) => {
   if (args[0] == 'end') {
     var fp = await `./servers/${msg.guild.id}/server_config.json`;
     var db = new sqlite3.Database(`./servers/${msg.guild.id}/${msg.guild.id}.db`);
-    await jsonFileUpdate(fp, isUsingFFAttribute, false);
-    var configFile = await jsonFileReader(fp);
+    await jsonManip.jsonFileUpdate(fp, isUsingFFAttribute, false);
+    var configFile = await jsonManip.jsonFileReader(fp);
     const channel = await bot.guilds.cache.get(msg.guild.id).channels.cache.get(configFile[chIDAttribute]);
     var role = await msg.guild.roles.cache.find(role => role.id === configFile[roleIDAttribute]);
     channel.delete();
     role.delete();
-    await jsonFileUpdate(fp, chIDAttribute, null);
-    await jsonFileUpdate(fp, msgIDAttribute, null);
-    await jsonFileUpdate(fp, roleIDAttribute, null);
+    await jsonManip.jsonFileUpdate(fp, chIDAttribute, null);
+    await jsonManip.jsonFileUpdate(fp, msgIDAttribute, null);
+    await jsonManip.jsonFileUpdate(fp, roleIDAttribute, null);
     db.run(`UPDATE users SET status = 0 WHERE userID >= 1`);
     db.close();
   }
@@ -111,12 +112,16 @@ If you would like to continue using this service, please re-react to the message
 // Will keep checking if its time to match every 1 hour
 async function timerstuff(msg, bot) {
   var interval = setInterval(() => {
+    var db = new sqlite3.Database(`./servers/${msg.guild.id}/${msg.guild.id}.db`);
     var fp = `./servers/${msg.guild.id}/server_config.json`;
-    var json = jsonFileReader(fp);
-    if (!json[isUsingFFAttribute]) {
+    if(fs.existsSync(fp)){
+      var json = jsonManip.jsonFileReader(fp);
+      if (!json[isUsingFFAttribute]) {
+        clearInterval(interval);
+      }
+    }else{
       clearInterval(interval);
     }
-    var db = new sqlite3.Database(`./servers/${msg.guild.id}/${msg.guild.id}.db`);
     let currentTime = Date.now();
     db.all(`SELECT timestamp, timerMillis
             FROM   timers`, [], (err, rows) => {
@@ -127,7 +132,7 @@ async function timerstuff(msg, bot) {
         matching(msg, db, bot)
       }
     })
-  }, 3600000);
+  }, 1000);
 }
 
 // Updates the time for when the server should match users
@@ -135,7 +140,7 @@ async function updateTimer(args, db) {
   if (args[1] == null) {
     args[1] = defaultTimer;
   }
-  args[1] = args[1] * 3600 * 1000;
+  args[1] = args[1] /** 3600*/ * 1000;
   db.all(`SELECT * FROM timers`, [], (err, rows) => {
     if (rows == null || rows.length == 0 && args[0] != 'timer') {
       db.run(`INSERT INTO timers (timestamp, timerMIllis)
@@ -239,37 +244,24 @@ async function setupExists(filepath, bot, msg, db) {
   }
 }
 
-// Updates the servers config json
-function jsonFileUpdate(filepath, attribute, newVal) {
-  let configFile = JSON.parse(fs.readFileSync(filepath, "utf8"));
-  configFile[attribute] = newVal;
-  fs.writeFileSync(filepath, JSON.stringify(configFile));
-}
-
-// Reads the servers config json
-function jsonFileReader(filepath) {
-  let configFile = JSON.parse(fs.readFileSync(filepath, "utf8"));
-  return configFile;
-}
-
 // Creates the friend finding channel
 async function createFFChannel(bot, msg) {
   const createdCh = await msg.guild.channels.create('friend-finding')
     .then((createdCh) => {
-      jsonFileUpdate(`./servers/${msg.guild.id}/server_config.json`, chIDAttribute, createdCh.id);
+      jsonManip.jsonFileUpdate(`./servers/${msg.guild.id}/server_config.json`, chIDAttribute, createdCh.id);
     })
 }
 
 // Creates the friend finding message to react to 
 function createFFMessage(bot, msg) {
-  configFile = jsonFileReader(`./servers/${msg.guild.id}/server_config.json`);
+  configFile = jsonManip.jsonFileReader(`./servers/${msg.guild.id}/server_config.json`);
 
   const channel = bot.guilds.cache.get(msg.guild.id).channels.cache.get(configFile[chIDAttribute]);
   //const checkChID = bot.channels.cache.get(configFile[chIDAttribute]);
   //let checkCh = msg.guild.channels.cache.find(channel => channel.id === checkChID);
   let newMsg = channel.send(botStartMsg)
     .then(async (newMsg) => {
-      await jsonFileUpdate(`./servers/${msg.guild.id}/server_config.json`, msgIDAttribute, newMsg.id);
+      await jsonManip.jsonFileUpdate(`./servers/${msg.guild.id}/server_config.json`, msgIDAttribute, newMsg.id);
       await addReactions(newMsg, botStartReaction);
     })
 }
@@ -283,7 +275,7 @@ function createFFRole(bot, msg) {
     reason: 'We need a role for those that want to participate.'
   })
     .then(async (roleCreated) => {
-      await jsonFileUpdate(`./servers/${msg.guild.id}/server_config.json`, roleIDAttribute, roleCreated.id);
+      await jsonManip.jsonFileUpdate(`./servers/${msg.guild.id}/server_config.json`, roleIDAttribute, roleCreated.id);
     })
 }
 /**
@@ -300,7 +292,7 @@ async function listenFFReactions(bot, msg, db) {
     }
     const emoji = await reaction._emoji.name;
     const { guild } = await reaction.message
-    let configFile = await jsonFileReader(`./servers/${msg.guild.id}/server_config.json`);
+    let configFile = await jsonManip.jsonFileReader(`./servers/${msg.guild.id}/server_config.json`);
 
     var role = await msg.guild.roles.cache.find(role => role.id === configFile[roleIDAttribute]);
     var member = await msg.guild.members.fetch(user.id);
@@ -338,7 +330,7 @@ async function listenFFReactions(bot, msg, db) {
 
   }
 
-  let configFile = await jsonFileReader(`./servers/${msg.guild.id}/server_config.json`);
+  let configFile = await jsonManip.jsonFileReader(`./servers/${msg.guild.id}/server_config.json`);
 
   bot.on('messageReactionAdd', async (reaction, user) => {
     if (configFile[chIDAttribute] == reaction.message.channel.id) {
